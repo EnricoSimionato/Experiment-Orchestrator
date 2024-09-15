@@ -1,0 +1,13 @@
+pyyaml
+
+matplotlib
+
+pytorch
+torchmetrics
+pytorch-lightning
+
+transformers
+
+peft
+
+lm_eval
