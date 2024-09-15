@@ -14,6 +14,8 @@ from exporch.utils.print_utils.print_utils import Verbose
 from exporch.configuration.config import Config
 
 
+# TODO check what is needed
+
 def check_path_to_storage(
         path_to_storage: str,
         type_of_analysis: str,

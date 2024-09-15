@@ -54,6 +54,7 @@ class SentimentAnalysisDataset(ABC, Dataset):
         """
 
 
+# TODO probably to delete
 class RandomDataset(SentimentAnalysisDataset):
     """
     Random dataset for sentiment analysis.
@@ -129,6 +130,7 @@ class RandomDataset(SentimentAnalysisDataset):
         return self.dataset[0][idx], self.dataset[1][idx]
 
 
+# TODO probably to delete
 class RandomDataModule(pl.LightningDataModule):
     """
     DataModule for the random dataset.

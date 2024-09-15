@@ -55,6 +55,7 @@ class ConversationDataset(ABC, Dataset):
         """
 
 
+# TODO I think it has to be removed
 class OpenAssistantGuanacoDatasetDict:
     def __init__(
             self,
@@ -403,23 +404,3 @@ class OpenAssistantGuanacoDataModule(pl.LightningDataModule):
             batch_size=self.batch_size * 2,
             num_workers=self.num_workers
         )
-
-
-if __name__ == "__main__":
-
-    from transformers import AutoTokenizer
-    tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1")
-    tokenizer.padding_side = "right"
-    tokenizer.pad_token = tokenizer.eos_token
-    dataset = OpenAssistantGuanacoDataModule(
-        32,
-        2,
-        tokenizer,
-        512,
-        (0.8, 0.1, 0.1),
-        seed=42
-    )
-    dataset.setup()
-
-    print(dataset.train)
-    print()

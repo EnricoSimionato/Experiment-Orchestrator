@@ -10,7 +10,6 @@ from exporch.utils.device_utils.device_utils import get_available_device
 
 def get_causal_lm_trainer(
         config: Config,
-        **kwargs
 ) -> pl.Trainer:
     """
     Returns the PyTorch Lightning trainer for a causal lm problem.
@@ -18,8 +17,6 @@ def get_causal_lm_trainer(
     Args:
         config (Config):
             A dictionary containing the configuration parameters for the trainer.
-        **kwargs:
-            Additional keyword arguments.
 
     Returns:
         pl.Trainer:

@@ -85,7 +85,7 @@ class Config:
             raise Exception(f"Path '{path_to_config}' does not exist.")
 
         with open(path_to_config, "r") as f:
-            config = yaml.safe_load(path_to_config)
+            config = yaml.safe_load(f)
 
         if "path_to_storage" not in config.keys():
             raise Exception("The path to storage must be provided in the configuration.")
@@ -374,7 +374,7 @@ class Config:
         if path is None:
             path = self.get("path_to_experiment")
 
-        path = os.path.join(path, "config.json")
+        path = os.path.join(path, "config.yaml")
         with open(path, "w") as file:
             config_dict = copy(self.__dict__)
             config_dict.pop("verbose")
