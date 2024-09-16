@@ -5,9 +5,7 @@ __all__ = [
     "Verbose",
 
     "get_available_device",
-    "check_path_to_storage",
-
-    "evaluate_model_on_benchmark"
+    "check_path_to_storage"
 ]
 
 from exporch.configuration.config import Config
