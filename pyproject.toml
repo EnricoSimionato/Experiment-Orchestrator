@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+
+[project]
+name = "exporch"
+version = "0.0.1"
+description = "A package for orchestrating experiments"
+authors = [{name = "Enrico Simionato"}]
+dependencies = [
+    "pyyaml",
+    "matplotlib",
+    "torch",
+    "torchmetrics",
+    "pytorch-lightning",
+    "transformers",
+    "peft",
+    "lm_eval"
+]

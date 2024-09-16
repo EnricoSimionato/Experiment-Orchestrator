@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import torch.nn as nn
 
 import pytorch_lightning as pl
@@ -25,37 +27,6 @@ from exporch.utils.classification.pl_trainer import get_classification_trainer
 
 from exporch.utils.causal_language_modeling.pl_models import ChatbotModelWrapper
 from exporch.utils.causal_language_modeling.pl_trainer import get_causal_lm_trainer
-
-
-def get_path_to_experiments(
-        environment: str,
-        **kwargs
-) -> str:
-    """
-    Returns the path to the experiments.
-
-    Args:
-        environment (str):
-            The environment where to run the experiments.
-        kwargs:
-            Additional keyword arguments.
-
-    Returns:
-        str:
-            The path to the experiments.
-    """
-
-    if environment == "local":
-        base_path = ("/Users/enricosimionato/Desktop/Alternative-Model-Architectures/src/experiments/"
-                     "performed_experiments/")
-    elif environment == "server":
-        base_path = "/home/enricosimionato/thesis/Alternative-Model-Architectures/src/experiments/performed_experiments"
-    elif environment == "colab":
-        base_path = "/content/Alternative-Model-Architectures/src/experiments/performed_experiments"
-    else:
-        raise ValueError("Invalid environment. Choose either 'server' or 'local'.")
-
-    return base_path
 
 
 class Experiment:
@@ -466,3 +437,45 @@ class Experiment:
         """
 
         return self.tokenizer
+
+
+class GeneralPurposeExperiment:
+    """
+
+    """
+
+    def __init__(
+            self,
+            config_file_path: str
+    ) -> None:
+        self.config = Config(config_file_path)
+
+    def start_experiment(
+            self,
+            **kwargs
+    ) -> dict:
+        """
+        Initializes the experiment.
+
+        Args:
+            kwargs:
+                Additional keyword arguments.
+
+        Returns:
+            dict:
+                A dictionary containing the paths where to store the configuration, the model, the logs, and the
+                checkpoints.
+        """
+
+        if self.config.status is ExperimentStatus.NOT_STARTED:
+            self.config.start_experiment()
+            print("Experiment started")
+        else:
+            print("Running the experiment, it is already started")
+
+        paths_dict = self.config.get_paths()
+
+        return paths_dict
+
+    def run_experiment(self):
+        pass

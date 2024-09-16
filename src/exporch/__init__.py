@@ -1,6 +1,5 @@
 __all__ = [
     "Config",
-    "get_path_to_configurations",
     "Experiment",
 
     "Verbose",
@@ -11,7 +10,7 @@ __all__ = [
     "evaluate_model_on_benchmark"
 ]
 
-from exporch.configuration.config import Config, get_path_to_configurations
+from exporch.configuration.config import Config
 from exporch.experiment.experiment import Experiment
 
 from exporch.utils.print_utils.print_utils import Verbose
