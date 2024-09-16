@@ -58,7 +58,7 @@ def evaluate_model_on_benchmark(
     # Defining the evaluation parameters
     default_evaluation_args = (benchmark_id_eval_args_default_mapping[benchmark_id]
                                if benchmark_id in benchmark_id_eval_args_default_mapping.keys() else {})
-    default_evaluation_args.update(evaluation_args[benchmark_id] if benchmark_id in evaluation_args.keys() else {})
+    default_evaluation_args.update(evaluation_args)
     evaluation_args = default_evaluation_args
     logger.info(f"Evaluation args: {evaluation_args}")
 
