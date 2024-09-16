@@ -68,8 +68,7 @@ def evaluate_model_on_benchmark(
     # Evaluating the model
     results = lm_eval.simple_evaluate(
         model="hf",
-        model_args={"pretrained": model.get_model().to(get_available_device(device)),
-                    "tokenizer": tokenizer, "backend": "causal"},
+        model_args={"pretrained": model, "tokenizer": tokenizer, "backend": "causal"},
         tasks=[benchmark_id],
         device=device,
         **evaluation_args
