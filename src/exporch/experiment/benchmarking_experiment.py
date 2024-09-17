@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import logging
 
-import lm_eval
 import transformers
 
-from exporch.utils.device_utils.device_utils import get_available_device
+import lm_eval
+
 
 benchmark_id_metric_name_mapping = {
     "arc_challenge": "",
@@ -53,7 +53,7 @@ def evaluate_model_on_benchmark(
     """
 
     logger = logging.getLogger(__name__)
-    logger.info("Running the function evaluate_model_on_benchmark in the file lm_eval_pipeline.py")
+    logger.info("Running the function evaluate_model_on_benchmark in the file lm_eval_pipeline.py.")
 
     # Defining the evaluation parameters
     default_evaluation_args = (benchmark_id_eval_args_default_mapping[benchmark_id]
@@ -62,10 +62,8 @@ def evaluate_model_on_benchmark(
     evaluation_args = default_evaluation_args
     logger.info(f"Evaluation args: {evaluation_args}")
 
-    logger.info(f"Starting the evaluation for the benchmark: {benchmark_id}.")
-    print(f"Starting the evaluation for the benchmark: {benchmark_id}.")
-
     # Evaluating the model
+    logger.info(f"Starting the evaluation for the benchmark: {benchmark_id}.")
     results = lm_eval.simple_evaluate(
         model="hf",
         model_args={"pretrained": model, "tokenizer": tokenizer, "backend": "causal"},
