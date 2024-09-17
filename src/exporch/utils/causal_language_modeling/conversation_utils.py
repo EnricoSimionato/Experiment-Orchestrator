@@ -281,8 +281,7 @@ def load_model_for_causal_lm(
     torch_dtype = torch.float32
     if config.contains("dtype") and config.get("dtype") == "float16":
         torch_dtype = torch.bfloat16
-        if config.get_verbose():
-            print("Loading the model using float16 dtype\n")
+        config.get_verbose().print("Loading the model using float16 dtype\n", Verbose.INFO)
 
     model = AutoModelForCausalLM.from_pretrained(
         config.get("model_id"),
@@ -291,6 +290,9 @@ def load_model_for_causal_lm(
     )
 
     if bnb_config is None:
+        logger.info(f"{config.contains('device')}")
+        logger.info(f"{config.get("device")}")
+        logger.info(f"{get_available_device(config.get("device"))}")
         model = model.to(get_available_device(config.get("device") if config.contains("device") else "cpu"))
         logger.info(f"Model loaded on {model.device}")
 

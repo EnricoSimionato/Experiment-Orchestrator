@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import torch
 
 
@@ -20,6 +22,11 @@ def get_available_device(
         torch.Device | str:
             The available device.
     """
+
+    logger = logging.getLogger(__name__)
+    logger.info("Running get_available_device in device_utils.py")
+    logger.info(f"preferred_device: {preferred_device}")
+    logger.info(f"{torch.cuda.is_available(),}")
 
     available_devices = {
         "cuda": {
