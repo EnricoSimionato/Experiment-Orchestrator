@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 import torch
@@ -255,6 +256,9 @@ def load_model_for_causal_lm(
             The model for causal language modeling.
     """
 
+    logger = logging.getLogger(__name__)
+    logger.info("Running load_model_for_causal_lm in conversation_utils.py")
+
     bnb_config = None
     if config.contains("quantization") and config.get("quantization") == "4bit":
         # Defining the quantization configuration (4 bits)
@@ -287,7 +291,8 @@ def load_model_for_causal_lm(
     )
 
     if bnb_config is None:
-        model = model.to(get_available_device(config.get("device") if config.contains("device") else "cuda"))
+        model = model.to(get_available_device(config.get("device") if config.contains("device") else "cpu"))
+        logger.info(f"Model loaded on {model.device}")
 
     config.get_verbose().print("Model loaded.", Verbose.INFO)
     config.get_verbose().print(model, Verbose.INFO)
