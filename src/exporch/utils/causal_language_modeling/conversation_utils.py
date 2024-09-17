@@ -290,13 +290,10 @@ def load_model_for_causal_lm(
     )
 
     if bnb_config is None:
-        logger.info(f"{config.contains('device')}")
-        logger.info(f"{config.get("device")}")
-        logger.info(f"{get_available_device(config.get("device"))}")
-        model = model.to(get_available_device(config.get("device") if config.contains("device") else "cpu"))
-        logger.info(f"Model loaded on {model.device}")
+        model.to(get_available_device(config.get("device") if config.contains("device") else "cpu"))
 
-    config.get_verbose().print("Model loaded.", Verbose.INFO)
+    config.get_verbose().print(f"Model loaded on {model.device}.", Verbose.INFO)
+    logger.info(f"Model loaded on {model.device}.")
     config.get_verbose().print(model, Verbose.INFO)
 
     return model

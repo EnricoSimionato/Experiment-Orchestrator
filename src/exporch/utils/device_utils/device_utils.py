@@ -26,7 +26,6 @@ def get_available_device(
     logger = logging.getLogger(__name__)
     logger.info("Running get_available_device in device_utils.py")
     logger.info(f"preferred_device: {preferred_device}")
-    logger.info(f"{torch.cuda.is_available(),}")
 
     available_devices = {
         "cuda": {
@@ -44,12 +43,15 @@ def get_available_device(
     }
 
     if preferred_device in available_devices.keys() and available_devices[preferred_device]["available"]:
+        logger.info(f"Using {preferred_device} device (preferred)")
         if just_string:
             return preferred_device
         return available_devices[preferred_device]["device"]
 
     for device in available_devices.keys():
         if available_devices[device]["available"]:
+            logger.info(f"Using {device} device")
             if just_string:
                 return device
             return available_devices[device]["device"]
+        logger.info(f"{device} device not available")
