@@ -7,6 +7,9 @@ from exporch.configuration.config import Config
 from exporch.utils.print_utils.print_utils import Verbose
 
 
+HF_TOKEN = "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"
+
+
 def load_model_for_sequence_classification(
         config: Config,
 ) -> transformers.AutoModelForSequenceClassification:
@@ -27,6 +30,7 @@ def load_model_for_sequence_classification(
         num_labels=config.get("num_classes"),
         id2label=config.get("id2label"),
         label2id=config.get("label2id"),
+        token=HF_TOKEN
     )
     if config.get_verbose() >= Verbose.INFO:
         print(f"Model loaded: {config.get('original_model_id')}")
@@ -50,7 +54,8 @@ def load_tokenizer_for_sequence_classification(
     """
 
     tokenizer = AutoTokenizer.from_pretrained(
-        config.get("tokenizer_id")
+        config.get("tokenizer_id"),
+        token=HF_TOKEN
     )
 
     if "bert" in config.get("model_id"):

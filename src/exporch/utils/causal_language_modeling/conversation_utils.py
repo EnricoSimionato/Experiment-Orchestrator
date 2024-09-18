@@ -17,6 +17,9 @@ from exporch.utils.device_utils.device_utils import get_available_device
 from exporch.utils.print_utils.print_utils import Verbose
 
 
+HF_TOKEN = "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"
+
+
 def get_conversation_example_1(
 ) -> list[str]:
     """
@@ -286,7 +289,8 @@ def load_model_for_causal_lm(
     model = AutoModelForCausalLM.from_pretrained(
         config.get("model_id"),
         torch_dtype=torch_dtype,
-        quantization_config=bnb_config
+        quantization_config=bnb_config,
+        token=HF_TOKEN
     )
 
     if bnb_config is None:
@@ -315,7 +319,8 @@ def load_tokenizer_for_causal_lm(
     """
 
     tokenizer = AutoTokenizer.from_pretrained(
-        config.get("tokenizer_id")
+        config.get("tokenizer_id"),
+        token=HF_TOKEN
     )
 
     if "bert" in config.get("tokenizer_id"):
@@ -346,7 +351,8 @@ def load_tokenizer_for_chatbot(
     """
 
     tokenizer = AutoTokenizer.from_pretrained(
-        config.get("tokenizer_id")
+        config.get("tokenizer_id"),
+        token=HF_TOKEN
     )
 
     if "bert" in config.get("tokenizer_id"):
