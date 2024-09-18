@@ -13,6 +13,7 @@ dependencies = [
     "torchmetrics",
     "pytorch-lightning",
     "transformers",
+    "bitsandbytes"
     "peft",
     "lm_eval"
 ]
