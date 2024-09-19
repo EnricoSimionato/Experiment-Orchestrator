@@ -8,21 +8,12 @@ import lm_eval
 
 
 benchmark_id_metric_name_mapping = {
-    "arc_challenge": "",
+    "arc_challenge": "acc,none",
     "hellaswag": "",
     "gsm8k": "",
     "mmlu": "",
     "truthfulqa_mc1": "acc,none",
     "winogrande": ""
-}
-
-benchmark_id_eval_args_default_mapping = {
-    "arc_challenge": {"num_fewshot": 25},
-    "hellaswag": {"num_fewshot": 10},
-    "gsm8k": {"num_fewshot": 5},
-    "mmlu": {"num_fewshot": 5},
-    "truthfulqa_mc1": {"num_fewshot": 0},
-    "winogrande": {"num_fewshot": 5},
 }
 
 
@@ -56,10 +47,10 @@ def evaluate_model_on_benchmark(
     logger.info("Running the function evaluate_model_on_benchmark in the file lm_eval_pipeline.py.")
 
     # Defining the evaluation parameters
-    default_evaluation_args = (benchmark_id_eval_args_default_mapping[benchmark_id]
-                               if benchmark_id in benchmark_id_eval_args_default_mapping.keys() else {})
-    default_evaluation_args.update(evaluation_args)
-    evaluation_args = default_evaluation_args
+    #default_evaluation_args = (benchmark_id_eval_args_default_mapping[benchmark_id]
+    #                           if benchmark_id in benchmark_id_eval_args_default_mapping.keys() else {})
+    #default_evaluation_args.update(evaluation_args)
+    #evaluation_args = default_evaluation_args
     logger.info(f"Evaluation args: {evaluation_args}")
 
     # Evaluating the model

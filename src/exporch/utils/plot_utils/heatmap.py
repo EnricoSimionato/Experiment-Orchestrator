@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import os
 import logging
+import os
 
-import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import numpy as np
@@ -16,7 +16,9 @@ from exporch.utils.print_utils.print_utils import Verbose
 
 def get_text_color(
         value: float,
-        cmap: mcolors.Colormap
+        cmap: mcolors.Colormap,
+        vmin: float = 0.0,
+        vmax: float = 1.0
 ) -> str:
     """
     Get the color of the text based on the value.
@@ -26,12 +28,21 @@ def get_text_color(
             The value to determine the color.
         cmap (mcolors.Colormap):
             The colormap to use to determine the color.
+        vmin (float):
+            Minimum value of the range (default 0.0).
+        vmax (float):
+            Maximum value of the range (default 1.0).
     """
 
-    rgba = cmap(value)
+    # Normalizing value
+    norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+    rgba = cmap(norm(value))
     r, g, b = rgba[:3]
+
+    # Calculating luminance
     luminance = 0.299 * r + 0.587 * g + 0.114 * b
 
+    # Returning white text for dark backgrounds and black for light backgrounds
     return "white" if luminance < 0.5 else "black"
 
 
@@ -53,7 +64,7 @@ def get_label_from_list(
             The label.
     """
 
-    return label[index] if isinstance(type(label), list) else label
+    return label[index] if isinstance(label, list) else label
 
 
 def set_axis_labels(
@@ -67,7 +78,14 @@ def set_axis_labels(
         x_ticks_visible: bool = True,
         y_ticks_visible: bool = True,
         x_rotation: float = 0,
-        y_rotation: float = 0
+        y_rotation: float = 0,
+        x_title_pad: int = 20,
+        y_title_pad: int = 20,
+        x_title_size: int = 14,
+        y_title_size: int = 14,
+        tick_label_size: int = 12,
+        invert_x_axis: bool = False,
+        invert_y_axis: bool = False
 ) -> None:
     """
     Sets the labels of the axes of a plot.
@@ -95,19 +113,44 @@ def set_axis_labels(
             The rotation of the x-axis labels. Default: 0.
         y_rotation (float):
             The rotation of the y-axis labels. Default: 0.
+        x_title_pad (int):
+            The padding of the x-axis title. Default: 20.
+        y_title_pad (int):
+            The padding of the y-axis title. Default: 20.
+        x_title_size (int):
+            Font size for the x-axis title. Default: 14.
+        y_title_size (int):
+            Font size for the y-axis title. Default: 14.
+        tick_label_size (int):
+            Font size for tick labels. Default: 12.
+        invert_x_axis (bool):
+            Whether to invert the x-axis. Default: False.
+        invert_y_axis (bool):
+            Whether to invert the y-axis. Default: False.
     """
 
     # Setting the titles of the axes
-    ax.set_xlabel(x_title)
-    ax.set_ylabel(y_title)
+    ax.set_xlabel(x_title, fontsize=x_title_size, labelpad=x_title_pad)
+    ax.set_ylabel(y_title, fontsize=y_title_size, labelpad=y_title_pad)
+
+
 
     # Setting the ticks and labels of the axes
     if x_labels is not None:
         ax.set_xticks(np.arange(len(x_labels)) if x_ticks is None else x_ticks)
-        ax.set_xticklabels(x_labels, rotation=x_rotation)
+        ax.set_xticklabels(x_labels, rotation=x_rotation, fontsize=tick_label_size)
+        ax.xaxis.set_label_position("top")
+        ax.xaxis.set_ticks_position("top")
     if y_labels is not None:
         ax.set_yticks(np.arange(len(y_labels)) if y_ticks is None else y_ticks)
-        ax.set_yticklabels(y_labels, rotation=y_rotation)
+        ax.set_yticklabels(y_labels, rotation=y_rotation, fontsize=tick_label_size)
+        ax.yaxis.set_label_position("left")
+        ax.yaxis.set_ticks_position("left")
+
+    if invert_x_axis:
+        ax.invert_xaxis()
+    if invert_y_axis:
+        ax.invert_yaxis()
 
     # Removing ticks from the borders
     if not x_ticks_visible:
@@ -125,12 +168,22 @@ def plot_heatmap(
         y_title: str | list[str] = "Row Index",
         x_labels: list[list[str]] = None,
         y_labels: list[list[str]] = None,
+        x_title_pad: int = 30,
+        y_title_pad: int = 30,
         cmap_str: str = "Blues",
         fig_size: tuple = (20, 20),
-        precision: int = 2
+        precision: int = 2,
+        show_text: bool = True,
+        colorbar_fraction: float = 0.03,
+        colorbar_pad: float = 0.04,
+        axis_title_size: int = 18,
+        x_title_size: int = 16,
+        y_title_size: int = 16,
+        tick_label_size: int = 12,
+        edge_color: str = None
 ) -> None:
     """
-    Plot a heatmap without additional row and column.
+    Plot a heatmap with a colorbar for each axis.
 
     Args:
         value_matrices_lists (list[list[np.ndarray]]):
@@ -149,12 +202,32 @@ def plot_heatmap(
             The labels of the x-axis. Default: None.
         y_labels (list[list[str]]):
             The labels of the y-axis. Default: None.
+        x_title_pad (int):
+            The padding of the x-axis title. Default: 20.
+        y_title_pad (int):
+            The padding of the y-axis title. Default: 20.
         fig_size (tuple):
             The size of the figure. Default: (20, 20).
         cmap_str (str):
             The colormap to use. Default: "Blues".
         precision (int):
             The number of decimal places to display in cell values. Default: 2.
+        show_text (bool):
+            Whether to show text annotations in the cells. Default: True.
+        colorbar_fraction (float):
+            The fraction of the original axes to use for the colorbar. Default: 0.03.
+        colorbar_pad (float):
+            The padding between the plot and colorbar. Default: 0.04.
+        axis_title_size (int):
+            Font size for axis titles. Default: 16.
+        x_title_size (int):
+            Font size for x-axis title. Default: 16.
+        y_title_size (int):
+            Font size for y-axis title. Default: 16.
+        tick_label_size (int):
+            Font size for tick labels. Default: 12.
+        edge_color (str):
+            The color of the edges of the cells. Default: "black".
     """
 
     if len(value_matrices_lists) <= 0:
@@ -167,12 +240,9 @@ def plot_heatmap(
                 for value_matrix in value_matrices_list]):
         raise ValueError("All matrices in the same list (to be plotted together) must have the same shape.")
 
-    # Getting the number of axis to be created
     num_axis = len(value_matrices_lists)
-
-    # Creating the plot
     fig, axs = plt.subplots(1, num_axis, figsize=fig_size)
-    fig.suptitle(title)
+    fig.suptitle(title, fontsize=20)
 
     for axis_index in range(num_axis):
         if num_axis == 1:
@@ -180,35 +250,36 @@ def plot_heatmap(
         else:
             ax = axs[axis_index]
         if axis_titles is not None:
-            ax.set_title(axis_titles[axis_index])
+            ax.set_title(axis_titles[axis_index], fontsize=axis_title_size)
 
         value_matrices_list = value_matrices_lists[axis_index]
-
-        # Getting the number of rows and columns
         num_rows, num_cols = value_matrices_list[0].shape
 
-        # Displaying the matrix
-        cax = ax.matshow(value_matrices_list[0], cmap=cmap_str,
-                         norm=mcolors.Normalize(vmin=value_matrices_list[0].min(), vmax=value_matrices_list[0].max()))
+        # Create the grid for the heatmap
+        cax = ax.pcolormesh(value_matrices_list[0], cmap=cmap_str, edgecolors=edge_color, linewidth=0.5)
 
-        # Adding color bar
-        fig.colorbar(cax)
+        cbar = fig.colorbar(cax, ax=ax, fraction=colorbar_fraction, pad=colorbar_pad)
+        cbar.ax.tick_params(labelsize=tick_label_size)
 
         # Adding labels
-        set_axis_labels(ax, get_label_from_list(x_title, axis_index), get_label_from_list(y_title, axis_index),
-                        x_labels[axis_index] if x_labels else None, y_labels[axis_index] if y_labels else None,
-                        x_ticks=list(range(num_cols)), y_ticks=list(range(num_rows)), x_ticks_visible=False, y_ticks_visible=False, x_rotation=90)
+        set_axis_labels(ax, x_title=get_label_from_list(x_title, axis_index), y_title=get_label_from_list(y_title, axis_index),
+                        x_labels=x_labels[axis_index] if x_labels else None, y_labels=y_labels[axis_index] if y_labels else None,
+                        x_ticks=list(np.array(range(num_cols)) + 0.5), y_ticks=list(np.array(range(num_rows)) + 0.5),
+                        x_ticks_visible=False, y_ticks_visible=False, x_rotation=90, y_rotation=0,
+                        x_title_pad=x_title_pad, y_title_pad=y_title_pad, x_title_size=x_title_size, y_title_size=y_title_size,
+                        tick_label_size=tick_label_size, invert_y_axis=True)
 
         # Adding text annotations for each cell
-        for i in range(num_rows):
-            for j in range(num_cols):
-                cell_string = "\n".join([f"{value_matrix[i, j]:.{precision}f}" for value_matrix in value_matrices_list])
-                ax.text(j, i, f"{cell_string}", ha="center", va="center", color=get_text_color(float(value_matrices_list[0][i, j]), plt.get_cmap(cmap_str)))
+        if show_text:
+            for i in range(num_rows):
+                for j in range(num_cols):
+                    cell_string = "\n".join(
+                        [f"{value_matrix[i, j]:.{precision}f}" for value_matrix in value_matrices_list])
+                    ax.text(j + 0.5, i + 0.5, f"{cell_string}", ha="center", va="center",
+                            color=get_text_color(float(value_matrices_list[0][i, j]), plt.get_cmap(cmap_str), vmin=value_matrices_list[0].min(), vmax=value_matrices_list[0].max()))
 
-    # Adjusting layout and show plot
-    plt.tight_layout()
+    plt.tight_layout(rect=(0, 0, 1, 0.98))
 
-    # Saving the plot
     plt.savefig(save_path)
     logging.info(f"Heatmap saved at '{save_path}'")
 
@@ -270,7 +341,7 @@ def plot_heatmap_with_additional_row_column(
                 for value_matrix in value_matrices_list]):
         raise ValueError("All matrices in the same list (to be plotted together) must have the same shape.")
 
-    # Getting the number of axis to be created
+    # Getting the number of axes to be created
     num_axis = len(value_matrices_lists)
 
     # Creating the plot
