@@ -1,24 +1,17 @@
 from __future__ import annotations
 
+from abc import ABC
 import logging
 
 import torch.nn as nn
 
 import pytorch_lightning as pl
-from pytorch_lightning import LightningDataModule
 
 import transformers
-from transformers import (
-    AutoTokenizer,
-    PreTrainedTokenizer
-)
-
-from exporch.utils.storage_utils.storage_utils import (
-    store_model_and_info,
-    load_model_and_info
-)
+from transformers import AutoTokenizer, PreTrainedTokenizer
 
 from exporch.configuration.config import ExperimentStatus, Config
+from exporch.utils.storage_utils.storage_utils import store_model_and_info, load_model_and_info
 
 
 # TODO remove the dependence on the ClassifierModelWrapper, get_classification_trainer, ChatbotModelWrapper, get_causal_lm_trainer,. .. . ..
@@ -51,7 +44,7 @@ class Experiment:
             The task to perform.
         model (nn.Module):
             The model to use.
-        dataset (LightningDataModule):
+        dataset (pl.LightningDataModule):
             The dataset to use.
         config (Config):
             The configuration containing the information about the experiment.
@@ -67,7 +60,7 @@ class Experiment:
             The task to perform.
         model (nn.Module | transformers.AutoModel | transformers.PreTrainedModel):
             The model to use.
-        dataset (LightningDataModule):
+        dataset (pl.LightningDataModule):
             The dataset to use.
         config (Config):
             The configuration containing the information about the experiment.
@@ -85,7 +78,7 @@ class Experiment:
             self,
             task: str,
             model: [nn.Module | transformers.AutoModel | transformers.PreTrainedModel],
-            dataset: LightningDataModule,
+            dataset: pl.LightningDataModule,
             config: Config,
             tokenizer: AutoTokenizer | PreTrainedTokenizer = None,
             store_model_function: callable = None,
@@ -439,7 +432,7 @@ class Experiment:
         return self.tokenizer
 
 
-class GeneralPurposeExperiment:
+class GeneralPurposeExperiment(ABC):
     """
 
     """
@@ -448,8 +441,18 @@ class GeneralPurposeExperiment:
             self,
             config_file_path: str
     ) -> None:
+        self.mandatory_keys = ["path_to_storage"]
         self.config = Config(config_file_path)
+        self.data = None
 
+    def get_mandatory_keys(
+            self
+    ) -> list:
+        """
+
+        """
+
+        return self.mandatory_keys
     def start_experiment(
             self,
             **kwargs
