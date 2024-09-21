@@ -255,7 +255,10 @@ def plot_heatmap(
         value_matrices_list = value_matrices_lists[axis_index]
         num_rows, num_cols = value_matrices_list[0].shape
 
-        # Create the grid for the heatmap
+        # Setting the cells to be squared
+        ax.set_aspect("equal")
+
+        # Creating the grid for the heatmap
         cax = ax.pcolormesh(value_matrices_list[0], cmap=cmap_str, edgecolors=edge_color, linewidth=0.5)
 
         cbar = fig.colorbar(cax, ax=ax, fraction=colorbar_fraction, pad=colorbar_pad)
