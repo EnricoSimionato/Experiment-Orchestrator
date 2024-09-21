@@ -1,2 +1,6 @@
-path_to_storage: "../results"
-version: "0"
+attribute: attribute
+experiment_type: general_purpose_experiment
+model_id: model_id
+nop: nop
+path_to_storage: ../results
+version: '0'

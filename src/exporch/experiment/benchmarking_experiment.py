@@ -9,11 +9,11 @@ import lm_eval
 
 benchmark_id_metric_name_mapping = {
     "arc_challenge": "acc,none",
-    "hellaswag": "",
-    "gsm8k": "",
-    "mmlu": "",
+    "hellaswag": "acc,none",
+    "gsm8k": "acc,none",
+    "mmlu": "acc,none",
     "truthfulqa_mc1": "acc,none",
-    "winogrande": ""
+    "winogrande": "acc,none"
 }
 
 

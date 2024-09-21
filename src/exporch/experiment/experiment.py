@@ -1,7 +1,12 @@
 from __future__ import annotations
 
-from abc import ABC
+from abc import ABC, abstractmethod
+from datetime import datetime
+import yaml
 import logging
+import os
+import pickle as pkl
+from typing import Any
 
 import torch.nn as nn
 
@@ -11,8 +16,7 @@ import transformers
 from transformers import AutoTokenizer, PreTrainedTokenizer
 
 from exporch.configuration.config import ExperimentStatus, Config
-from exporch.utils.storage_utils.storage_utils import store_model_and_info, load_model_and_info
-
+from exporch.utils.storage_utils.storage_utils import store_model_and_info, load_model_and_info, check_path_to_storage
 
 # TODO remove the dependence on the ClassifierModelWrapper, get_classification_trainer, ChatbotModelWrapper, get_causal_lm_trainer,. .. . ..
 from exporch.utils.classification.pl_models import ClassifierModelWrapper
@@ -432,53 +436,302 @@ class Experiment:
         return self.tokenizer
 
 
-class GeneralPurposeExperiment(ABC):
+class GeneralPurposeExperimentFactory:
+    """
+    Class to create an experiment based on the experiment type.
+
+    Class Attributes:
+        mapping (dict):
+            The mapping between the experiment type and the corresponding class.
     """
 
+    mapping = {}
+
+    @classmethod
+    def register(
+            cls,
+            mapping: dict
+    ) -> None:
+        """
+        Registers the mapping between the experiment type and the corresponding class.
+
+        Args:
+            mapping (dict):
+                The mapping between the experiment type and the corresponding class.
+        """
+
+        cls.mapping = mapping
+
+    @classmethod
+    def create(
+            cls,
+            config_file_path: str
+    ) -> GeneralPurposeExperiment:
+        """
+        Creates an experiment returning the correct experiment class based on the experiment type in the configuration
+        file.
+
+        Args:
+            config_file_path (str):
+                The path to the configuration file.
+
+        Returns:
+            GeneralPurposeExperiment:
+                The experiment.
+        """
+
+        config = Config(config_file_path)
+        if not config.contains("experiment_type"):
+            raise ValueError("The configuration file does not contain the key 'experiment_type'.")
+
+        for key in cls.mapping.keys():
+            if key in config.get("experiment_type"):
+                return cls.mapping[key](config_file_path)
+
+        raise ValueError(f"The experiment type {config.get('experiment_type')} is not recognized.")
+
+
+class GeneralPurposeExperiment(ABC):
     """
+    Class to run an experiment in a standardized way.
+
+    Args:
+        config_file_path (str):
+            The path to the configuration file.
+
+    Attributes:
+        config (Config):
+            The configuration containing the information about the experiment.
+        status (ExperimentStatus):
+            The status of the experiment.
+        running_times (list[dict]):
+            The running times of the experiment.
+        mandatory_keys (list):
+            The mandatory keys in the configuration.
+        data (Any):
+            The data already computed in the experiment.
+    """
+
+    mandatory_keys = ["path_to_storage", "experiment_type", "model_id"]
 
     def __init__(
             self,
             config_file_path: str
     ) -> None:
-        self.mandatory_keys = ["path_to_storage"]
+        # Loading the configuration and checking the mandatory keys
         self.config = Config(config_file_path)
-        self.data = None
+        self.config.check_mandatory_keys(self.get_mandatory_keys())
+
+        self.status = ExperimentStatus.NOT_STARTED
+        self.running_times = []
+
+        # Checking the path to the storage
+        file_available, directory_path, file_name = check_path_to_storage(
+            self.config.get("path_to_storage"),
+            self.config.get("experiment_type"),
+            self.config.get("model_id").split("/")[-1],
+            self.config.get("version") if self.config.contains("version") else None,
+        )
+        self.config.update(
+            {
+                "file_available": file_available,
+                "file_path": os.path.join(directory_path, file_name),
+                "directory_path": directory_path,
+                "file_name": file_name,
+                "log_path": os.path.join(directory_path, "logs.log")
+            }
+        )
+
+        # Creating the logger
+        for handler in logging.root.handlers[:]:
+            logging.root.removeHandler(handler)
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s [%(levelname)s] %(message)s",
+            handlers=[logging.FileHandler(self.config.get("log_path"))]
+        )
+        self.logger = logging.getLogger()
+        self.log(f"Configuration file from: '{config_file_path}'.")
+
+        # Doing a consistency between the stored configuration and the loaded configuration
+        self.check_stored_configuration_consistency(os.path.join(directory_path, "config.yaml"))
+        self.log(f"Consistency check between the stored configuration and the loaded configuration passed.")
+
+        # Loading the data if the file is available
+        data = None
+        if file_available:
+            print(f"The file '{self.config.get('file_path')}' is available.")
+            with open(self.config.get("file_path"), "rb") as f:
+                data = pkl.load(f)
+
+        self.data = data
+
+    def log(
+            self,
+            message: str,
+            level: str = "info"
+    ) -> None:
+        """
+        Logs a message in the log file.
+
+        Args:
+            message (str):
+                The message to log.
+            level (str, optional):
+                The level of the log. Defaults to "info".
+        """
+
+        # TODO Allow different levels of logs
+        if level == "info":
+            self.logger.info(message)
+        else:
+            raise NotImplementedError("Only info level is implemented.")
+
+    def check_stored_configuration_consistency(
+            self,
+            config_file_path: str
+    ) -> None:
+        """
+        Checks if there are any differences between the current configuration and the one stored in config.yaml (if it
+        exists) in the directory_path.
+
+        Args:
+            config_file_path (str):
+                The path where the config.yaml is expected to be found.
+        """
+
+        if os.path.exists(config_file_path):
+            with open(config_file_path, "r") as f:
+                stored_config = yaml.safe_load(f)
+
+            # Comparing with the current configuration
+            differences = self.compare_configs(self.config.to_dict(), stored_config)
+
+            if differences:
+                print("Configuration differences found:")
+                self.log("Configuration differences found:")
+                for key, (current_value, stored_value) in differences.items():
+                    diff_message = f"- {key}: Current: {current_value}, Stored: {stored_value}"
+                    print(diff_message)
+                    self.log(diff_message + "\n")
+                user_confirmation = input("There are differences in the configuration. Do you want to continue with the new configuration? (yes/no): ").strip().lower()
+                if user_confirmation != "yes" and user_confirmation != "y":
+                    print("Experiment aborted due to configuration inconsistency.")
+                    self.status = ExperimentStatus.STOPPED
+                    raise Exception("Experiment aborted due to configuration inconsistency.")
+            else:
+                self.log("No differences found between the current configuration and the stored configuration.")
+        else:
+            self.log(f"No stored configuration found at {config_file_path}, continuing with the current configuration.")
+
+    @staticmethod
+    def compare_configs(
+            current_config: dict,
+            stored_config: dict
+    ) -> dict:
+        """
+        Compares two configuration dictionaries and returns the differences.
+
+        Args:
+            current_config (dict):
+                The current configuration.
+            stored_config (dict):
+                The stored configuration from config.yaml.
+
+        Returns:
+            dict:
+                A dictionary with keys as the differing config parameters and values as tuples of
+                (current_value, stored_value).
+        """
+
+        differences = {}
+        for key in current_config:
+            if key in stored_config:
+                if current_config[key] != stored_config[key]:
+                    differences[key] = (current_config[key], stored_config[key])
+            else:
+                differences[key] = (current_config[key], None)
+
+        # Finding any keys in the stored config that are not in the current config
+        for key in stored_config:
+            if key not in current_config:
+                differences[key] = (None, stored_config[key])
+
+        return differences
 
     def get_mandatory_keys(
             self
     ) -> list:
         """
-
-        """
-
-        return self.mandatory_keys
-    def start_experiment(
-            self,
-            **kwargs
-    ) -> dict:
-        """
-        Initializes the experiment.
-
-        Args:
-            kwargs:
-                Additional keyword arguments.
+        Returns all mandatory keys, including the keys defined in superclasses.
 
         Returns:
-            dict:
-                A dictionary containing the paths where to store the configuration, the model, the logs, and the
-                checkpoints.
+            list:
+                A list of all mandatory keys from the current class and its superclasses.
+        """
+        # Initializing a list with mandatory keys from the current class
+        mandatory_keys = list(self.mandatory_keys)
+
+        # Traversing the superclass hierarchy and collect mandatory keys
+        for cls in self.__class__.__mro__[1:]:
+            if hasattr(cls, "mandatory_keys"):
+                mandatory_keys.extend(cls.mandatory_keys)
+
+        return list(set(mandatory_keys))
+
+    def launch_experiment(
+            self
+    ) -> None:
+        """
+        Launches the experiment. Executing the operations that are defined in the specific subclass of
+        GeneralPurposeExperiment.
         """
 
-        if self.config.status is ExperimentStatus.NOT_STARTED:
-            self.config.start_experiment()
-            print("Experiment started")
-        else:
-            print("Running the experiment, it is already started")
+        self.running_times.append({"start_time": datetime.now().strftime("%Y_%m_%d_%H_%M_%S"), "end_time": None})
+        try :
+            self.status = ExperimentStatus.RUNNING
+            self._run_experiment()
+        except Exception as e:
+            self.running_times[-1]["end_time"] = datetime.now()
+            self.status = ExperimentStatus.STOPPED
+            raise e
+        self.running_times[-1]["end_time"] = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        self.status = ExperimentStatus.COMPLETED
 
-        paths_dict = self.config.get_paths()
+    @abstractmethod
+    def _run_experiment(
+            self
+    ) -> None:
+        """
+        Runs the experiment. Performing the operations that are defined in the specific subclass of
+        GeneralPurposeExperiment. This method is abstract and must be implemented in the specific subclass.
+        """
 
-        return paths_dict
+        pass
 
-    def run_experiment(self):
+    def store_data(
+            self
+    ) -> None:
+        """
+        Stores the data computed in the experiment.
+        """
+
+        with open(self.config.get("file_path"), "wb") as f:
+            pkl.dump(self.data, f)
+
+
+class NopGeneralPurposeExperiment(GeneralPurposeExperiment):
+    """
+    A no-operation experiment that does nothing.
+    """
+
+    mandatory_keys = ["nop"]
+
+    def _run_experiment(
+            self
+    ) -> None:
+        """
+        Does nothing.
+        """
+
         pass

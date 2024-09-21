@@ -1,6 +1,9 @@
 __all__ = [
     "Config",
     "Experiment",
+    "GeneralPurposeExperiment",
+    "NopGeneralPurposeExperiment",
+    "GeneralPurposeExperimentFactory",
 
     "Verbose",
 
@@ -9,7 +12,7 @@ __all__ = [
 ]
 
 from exporch.configuration.config import Config
-from exporch.experiment.experiment import Experiment
+from exporch.experiment.experiment import Experiment, GeneralPurposeExperiment, NopGeneralPurposeExperiment, GeneralPurposeExperimentFactory
 
 from exporch.utils.print_utils.print_utils import Verbose
 

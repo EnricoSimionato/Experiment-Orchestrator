@@ -1,10 +1,8 @@
-import os
 from copy import copy
-from datetime import datetime
-import yaml
-from typing import Any
-
 from enum import Enum
+import yaml
+import os
+from typing import Any
 
 import transformers
 
@@ -15,9 +13,7 @@ class ExperimentStatus(Enum):
     NOT_STARTED = "Not started"
     RUNNING = "Running"
     COMPLETED = "Completed"
-
-
-environments = ["local", "server", "colab"]
+    STOPPED = "Stopped"
 
 
 class Config:
@@ -28,45 +24,32 @@ class Config:
     Args:
         path_to_config (str):
             The path to the configuration file.
-        **kwargs:
-            Additional keyword arguments.
 
     Attributes:
         All the keys in the config file are added as attributes to the class.
-        keys_for_naming (list):
-            A list of keys to be used for the naming of the experiment. The values of these keys will be concatenated
-            to form the name of the experiment. If this is not provided in the configuration file, the name of the
-            experiment will be the date and time when the experiment started.
-        begin_time (str):
-            The time when the experiment started. It is set to None initially and is updated when the experiment starts.
-        end_time (str):
-            The time when the experiment ended. It is set to None initially and is updated when the experiment ends.
+        verbose (Verbose):
+            The verbosity level of the configuration.
     """
 
     def __init__(
             self,
-            path_to_config: str = None,
-            **kwargs
+            path_to_config: str = None
     ) -> None:
+        # Checking if the path to the configuration file is provided and exists
         if path_to_config is None:
             raise Exception("The path to the configuration file cannot be None.")
         if not os.path.exists(path_to_config):
             raise Exception(f"Path '{path_to_config}' does not exist.")
 
+        # Loading the configuration file
         with open(path_to_config, "r") as f:
             config = yaml.safe_load(f)
 
+        # Checking if the path to storage is provided and exists
         if "path_to_storage" not in config.keys():
             raise Exception("The path to storage must be provided in the configuration.")
         if not os.path.exists(config["path_to_storage"]):
             raise Exception(f"Path '{config['path_to_storage']}' does not exist.")
-
-        self.keys_for_naming = []
-        if "keys_for_naming" in config.keys():
-            for key in config["keys_for_naming"]:
-                if key not in config.keys():
-                    raise Exception(f"The key '{key}', which is one the keys to be used for the naming of the "
-                                    f"experiment must be provided in the configuration.")
 
         # Setting the verbosity level
         try:
@@ -76,13 +59,9 @@ class Config:
 
         self.__dict__.update(config)
 
-        self.begin_time = None
-        self.end_time = None
-
     def contains(
             self,
-            key: str,
-            **kwargs
+            key: str
     ) -> bool:
         """
         Checks if the specified key is present in the configuration.
@@ -102,8 +81,7 @@ class Config:
 
     def get(
             self,
-            key: str,
-            **kwargs
+            key: str
     ) -> Any:
         """
         Returns the value of the specified key.
@@ -123,8 +101,7 @@ class Config:
 
     def get_dict(
             self,
-            keys: list,
-            **kwargs
+            keys: list
     ) -> dict:
         """
         Returns a dictionary containing the values of the specified keys.
@@ -137,6 +114,7 @@ class Config:
             dict:
                 A dictionary containing the values of the specified keys.
         """
+
         for key in keys:
             if not self.contains(key):
                 print(f"The key '{key}' is not present in the configuration.")
@@ -148,8 +126,7 @@ class Config:
         return filtered_dict
 
     def get_paths(
-            self,
-            **kwargs
+            self
     ) -> dict:
         """
         Returns the paths of the experiment.
@@ -199,7 +176,6 @@ class Config:
 
     def get_verbose(
             self,
-            **kwargs
     ) -> Verbose:
         """
         Returns the verbosity level of the configuration.
@@ -215,10 +191,22 @@ class Config:
 
         return self.verbose
 
+    def to_dict(
+            self
+    ) -> dict:
+        """
+        Returns the configuration as a dictionary.
+
+        Returns:
+            dict:
+                The configuration as a dictionary.
+        """
+
+        return self.__dict__
+
     def check_mandatory_keys(
             self,
-            mandatory_keys: list,
-            **kwargs
+            mandatory_keys: list
     ) -> None:
         """
         Checks if the configuration file contains the mandatory keys.
@@ -226,8 +214,6 @@ class Config:
         Args:
             mandatory_keys (list):
                 A list of mandatory keys that must be present in the configuration file.
-            **kwargs:
-                Additional keyword arguments.
         """
 
         for key in mandatory_keys:
@@ -237,8 +223,7 @@ class Config:
     def set(
             self,
             key: str,
-            value: Any,
-            **kwargs
+            value: Any
     ):
         """
         Sets the value of the specified key.
@@ -256,8 +241,7 @@ class Config:
 
     def update(
             self,
-            config: dict,
-            **kwargs
+            config: dict
     ) -> None:
         """
         Updates or inserts the configuration parameters according to the provided dictionary.
@@ -272,61 +256,37 @@ class Config:
         self.__dict__.update(config)
 
     def start_experiment(
-            self,
-            **kwargs
+            self
     ) -> None:
         """
         Initializes the experiments by defining the paths to the directories of the experiment and the start timestamp
         of the experiment.
-
-        Args:
-            kwargs:
-                Additional keyword arguments.
         """
 
-        if self.begin_time is None:
-            self.begin_time = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        dir_name = "_".join([self.__dict__[key].replace("/", "_") for key in self.keys_for_naming])
+        path_to_experiment = os.path.join(
+            self.get("path_to_storage"),
+            dir_name +
+            ("_" if len(dir_name) > 0 else "")
+        )
+        os.makedirs(path_to_experiment, exist_ok=True)
 
-            dir_name = "_".join([self.__dict__[key].replace("/", "_") for key in self.keys_for_naming])
-            path_to_experiment = os.path.join(
-                self.get("path_to_storage"),
-                dir_name +
-                ("_" if len(dir_name) > 0 else "") +
-                self.begin_time
-            )
-            os.makedirs(path_to_experiment, exist_ok=True)
+        paths = {
+            "path_to_model": os.path.join(path_to_experiment, "model"),
+            "path_to_tokenizer": os.path.join(path_to_experiment, "tokenizer"),
+            "path_to_configuration": os.path.join(path_to_experiment, "configuration"),
+            "path_to_logs": os.path.join(path_to_experiment, "logs"),
+            #"path_to_tensorboard_logs": os.path.join(path_to_experiment, "logs", "tensorboard_logs"),
+            #"path_to_csv_logs": os.path.join(path_to_experiment, "logs", "csv_logs"),
+            "path_to_checkpoints": os.path.join(path_to_experiment, "checkpoints"),
+            "path_to_images": os.path.join(path_to_experiment, "images")
+        }
+        for _, path in paths.items():
+            os.makedirs(path, exist_ok=True)
 
-            paths = {
-                "path_to_model": os.path.join(path_to_experiment, "model"),
-                "path_to_tokenizer": os.path.join(path_to_experiment, "tokenizer"),
-                "path_to_configuration": os.path.join(path_to_experiment, "configuration"),
-                "path_to_logs": os.path.join(path_to_experiment, "logs"),
-                #"path_to_tensorboard_logs": os.path.join(path_to_experiment, "logs", "tensorboard_logs"),
-                #"path_to_csv_logs": os.path.join(path_to_experiment, "logs", "csv_logs"),
-                "path_to_checkpoints": os.path.join(path_to_experiment, "checkpoints"),
-                "path_to_images": os.path.join(path_to_experiment, "images")
-            }
-            for _, path in paths.items():
-                os.makedirs(path, exist_ok=True)
+        paths["path_to_experiment"] = path_to_experiment
 
-            paths["path_to_experiment"] = path_to_experiment
-
-            self.__dict__.update(paths)
-
-    def end_experiment(
-            self,
-            **kwargs
-    ) -> None:
-        """
-        Ends the experiments by setting the end time.
-
-        Args:
-            kwargs:
-                Additional keyword arguments.
-        """
-
-        if self.end_time is None:
-            self.end_time = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        self.__dict__.update(paths)
 
     def store(
             self,
@@ -349,25 +309,6 @@ class Config:
             config_dict.pop("verbose")
             yaml.dump(config_dict, file, default_flow_style=False)
 
-    @property
-    def status(
-            self
-    ) -> ExperimentStatus:
-        """
-        Returns the status of the experiments.
-
-        Returns:
-            ExperimentStatus:
-                The status of the experiments.
-        """
-
-        if self.begin_time is None:
-            return ExperimentStatus.NOT_STARTED
-        elif self.end_time is None:
-            return ExperimentStatus.RUNNING
-        else:
-            return ExperimentStatus.COMPLETED
-
     def __str__(
             self
     ) -> str:
@@ -382,4 +323,5 @@ class Config:
         config_string = ""
         for key in self.__dict__.keys():
             config_string += f"{key}: {self.__dict__[key]}\n"
+
         return config_string
