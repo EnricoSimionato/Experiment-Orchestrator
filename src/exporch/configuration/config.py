@@ -1,4 +1,4 @@
-from copy import copy
+import copy
 from enum import Enum
 import yaml
 import os
@@ -202,7 +202,10 @@ class Config:
                 The configuration as a dictionary.
         """
 
-        return self.__dict__
+        config_dictionary_representation = copy.deepcopy(self.__dict__)
+        config_dictionary_representation.pop("verbose")
+
+        return config_dictionary_representation
 
     def check_mandatory_keys(
             self,
@@ -305,9 +308,9 @@ class Config:
 
         path = os.path.join(path, "config.yaml")
         with open(path, "w") as file:
-            config_dict = copy(self.__dict__)
-            config_dict.pop("verbose")
-            yaml.dump(config_dict, file, default_flow_style=False)
+            config_dictionary_representation = copy.deepcopy(self.__dict__)
+            config_dictionary_representation.pop("verbose")
+            yaml.dump(config_dictionary_representation, file, default_flow_style=False)
 
     def __str__(
             self

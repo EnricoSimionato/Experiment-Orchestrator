@@ -688,15 +688,18 @@ class GeneralPurposeExperiment(ABC):
         """
 
         self.running_times.append({"start_time": datetime.now().strftime("%Y_%m_%d_%H_%M_%S"), "end_time": None})
+        self.store_configuration()
         try :
             self.status = ExperimentStatus.RUNNING
             self._run_experiment()
         except Exception as e:
             self.running_times[-1]["end_time"] = datetime.now()
             self.status = ExperimentStatus.STOPPED
+            self.store_configuration()
             raise e
         self.running_times[-1]["end_time"] = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         self.status = ExperimentStatus.COMPLETED
+        self.store_configuration()
 
     @abstractmethod
     def _run_experiment(
@@ -708,6 +711,15 @@ class GeneralPurposeExperiment(ABC):
         """
 
         pass
+
+    def store_configuration(
+            self
+    ) -> None:
+        """
+        Stores the configuration of the experiment.
+        """
+
+        self.config.store(self.config.get("directory_path"))
 
     def store_data(
             self

@@ -35,10 +35,15 @@ def get_text_color(
     """
 
     # Normalizing value
+    """
+    norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+    rgba = cmap(norm(value))
+
+    """
     norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
     rgba = cmap(norm(value))
     r, g, b = rgba[:3]
-
+    
     # Calculating luminance
     luminance = 0.299 * r + 0.587 * g + 0.114 * b
 
@@ -279,7 +284,7 @@ def plot_heatmap(
                     cell_string = "\n".join(
                         [f"{value_matrix[i, j]:.{precision}f}" for value_matrix in value_matrices_list])
                     ax.text(j + 0.5, i + 0.5, f"{cell_string}", ha="center", va="center",
-                            color=get_text_color(float(value_matrices_list[0][i, j]), plt.get_cmap(cmap_str), vmin=value_matrices_list[0].min(), vmax=value_matrices_list[0].max()))
+                            color=get_text_color(float(value_matrices_list[0][i, j]), plt.get_cmap(cmap_str), vmin=np.nanmin(value_matrices_list[0]), vmax=np.nanmax(value_matrices_list[0])))
 
     plt.tight_layout(rect=(0, 0, 1, 0.98))
 
