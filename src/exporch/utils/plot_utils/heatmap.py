@@ -35,15 +35,10 @@ def get_text_color(
     """
 
     # Normalizing value
-    """
-    norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
-    rgba = cmap(norm(value))
-
-    """
     norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
     rgba = cmap(norm(value))
     r, g, b = rgba[:3]
-    
+
     # Calculating luminance
     luminance = 0.299 * r + 0.587 * g + 0.114 * b
 
