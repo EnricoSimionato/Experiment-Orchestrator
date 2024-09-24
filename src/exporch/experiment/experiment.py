@@ -15,8 +15,8 @@ import pytorch_lightning as pl
 import transformers
 from transformers import AutoTokenizer, PreTrainedTokenizer
 
-from exporch.configuration.config import ExperimentStatus, Config
-from exporch.utils.storage_utils.storage_utils import store_model_and_info, load_model_and_info, check_path_to_storage
+from exporch.configuration.config import  Config, ExperimentStatus
+from exporch.utils.storage_utils.storage_utils import check_path_to_storage, load_model_and_info, store_model_and_info
 
 # TODO remove the dependence on the ClassifierModelWrapper, get_classification_trainer, ChatbotModelWrapper, get_causal_lm_trainer,. .. . ..
 from exporch.utils.classification.pl_models import ClassifierModelWrapper
@@ -566,6 +566,46 @@ class GeneralPurposeExperiment(ABC):
 
         self.data = data
 
+    def get_config(
+            self
+    ) -> Config:
+        """
+        Returns the configuration.
+
+        Returns:
+            Config:
+                The configuration.
+        """
+
+        return self.config
+
+    def get_data(
+            self
+    ) -> Any:
+        """
+        Returns the data computed in the experiment.
+
+        Returns:
+            Any:
+                The data computed in the experiment.
+        """
+
+        return self.data
+
+    def set_data(
+            self,
+            data: Any
+    ) -> None:
+        """
+        Sets the data computed in the experiment.
+
+        Args:
+            data (Any):
+                The data computed in the experiment.
+        """
+
+        self.data = data
+
     def log(
             self,
             message: str,
@@ -730,6 +770,25 @@ class GeneralPurposeExperiment(ABC):
 
         with open(self.config.get("file_path"), "wb") as f:
             pkl.dump(self.data, f)
+
+    def store(
+            self,
+            data: Any,
+            file_name: str,
+            extension: str = "pkl"
+    ) -> None:
+        """
+        Stores the data in a file.
+        """
+
+        if data is None:
+            raise ValueError("The data to store is None.")
+
+        if extension == "pkl":
+            with open(os.path.join(self.config.get("directory_path"), file_name), "wb") as f:
+                pkl.dump(data, f)
+        else:
+            raise NotImplementedError(f"Extension {extension} not implemented.")
 
 
 class NopGeneralPurposeExperiment(GeneralPurposeExperiment):
