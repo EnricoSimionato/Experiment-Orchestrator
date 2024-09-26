@@ -59,6 +59,33 @@ class Config:
 
         self.__dict__.update(config)
 
+    @staticmethod
+    def convert_to_config(
+            configuration_dict: dict
+    ) -> 'Config':
+        """
+        Converts a dictionary to a Config object.
+
+        Args
+            configuration_dict (dict):
+                The dictionary to be converted.
+
+        Returns:
+            Config:
+                The Config object.
+        """
+
+        if "path_to_storage" not in configuration_dict.keys():
+            configuration_dict["path_to_storage"] = os.path.join(os.getcwd())
+
+        with open("tmp.yaml", "w") as f:
+            yaml.dump(configuration_dict, f)
+
+        configuration = Config("tmp.yaml")
+        os.remove("tmp.yaml")
+
+        return configuration
+
     def contains(
             self,
             key: str
