@@ -172,13 +172,14 @@ def plot_heatmap(
         y_title_pad: int = 30,
         cmap_str: str = "Blues",
         fig_size: tuple = (20, 20),
-        precision: int = 2,
+        precision: int = 3,
         show_text: bool = True,
         colorbar_fraction: float = 0.03,
         colorbar_pad: float = 0.04,
         axis_title_size: int = 18,
         x_title_size: int = 16,
         y_title_size: int = 16,
+        fontsize: int = 20,
         tick_label_size: int = 12,
         edge_color: str = None
 ) -> None:
@@ -224,6 +225,8 @@ def plot_heatmap(
             Font size for x-axis title. Default: 16.
         y_title_size (int):
             Font size for y-axis title. Default: 16.
+        fontsize (int):
+            Font size for text annotations in the cells. Default: 18
         tick_label_size (int):
             Font size for tick labels. Default: 12.
         edge_color (str):
@@ -278,7 +281,7 @@ def plot_heatmap(
                 for j in range(num_cols):
                     cell_string = "\n".join(
                         [f"{value_matrix[i, j]:.{precision}f}" for value_matrix in value_matrices_list])
-                    ax.text(j + 0.5, i + 0.5, f"{cell_string}", ha="center", va="center",
+                    ax.text(j + 0.5, i + 0.5, f"{cell_string}", ha="center", va="center", fontsize=fontsize,
                             color=get_text_color(float(value_matrices_list[0][i, j]), plt.get_cmap(cmap_str), vmin=np.nanmin(value_matrices_list[0]), vmax=np.nanmax(value_matrices_list[0])))
 
     plt.tight_layout(rect=(0, 0, 1, 0.98))
