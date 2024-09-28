@@ -133,14 +133,13 @@ def set_axis_labels(
     ax.set_xlabel(x_title, fontsize=x_title_size, labelpad=x_title_pad)
     ax.set_ylabel(y_title, fontsize=y_title_size, labelpad=y_title_pad)
 
-
-
     # Setting the ticks and labels of the axes
     if x_labels is not None:
         ax.set_xticks(np.arange(len(x_labels)) if x_ticks is None else x_ticks)
         ax.set_xticklabels(x_labels, rotation=x_rotation, fontsize=tick_label_size)
         ax.xaxis.set_label_position("top")
         ax.xaxis.set_ticks_position("top")
+
     if y_labels is not None:
         ax.set_yticks(np.arange(len(y_labels)) if y_ticks is None else y_ticks)
         ax.set_yticklabels(y_labels, rotation=y_rotation, fontsize=tick_label_size)
@@ -268,12 +267,25 @@ def plot_heatmap(
         cbar.ax.tick_params(labelsize=tick_label_size)
 
         # Adding labels
-        set_axis_labels(ax, x_title=get_label_from_list(x_title, axis_index), y_title=get_label_from_list(y_title, axis_index),
-                        x_labels=x_labels[axis_index] if x_labels else None, y_labels=y_labels[axis_index] if y_labels else None,
-                        x_ticks=list(np.array(range(num_cols)) + 0.5), y_ticks=list(np.array(range(num_rows)) + 0.5),
-                        x_ticks_visible=False, y_ticks_visible=False, x_rotation=90, y_rotation=0,
-                        x_title_pad=x_title_pad, y_title_pad=y_title_pad, x_title_size=x_title_size, y_title_size=y_title_size,
-                        tick_label_size=tick_label_size, invert_y_axis=True)
+        set_axis_labels(
+            ax,
+            x_title=get_label_from_list(x_title, axis_index),
+            y_title=get_label_from_list(y_title, axis_index),
+            x_labels=x_labels[axis_index] if x_labels else None,
+            y_labels=y_labels[axis_index] if y_labels else None,
+            x_ticks=list(np.arange(num_cols) + 0.5),
+            y_ticks=list(np.arange(num_rows) + 0.5),
+            x_ticks_visible=False,
+            y_ticks_visible=False,
+            x_rotation=90,
+            y_rotation=0,
+            x_title_pad=x_title_pad,
+            y_title_pad=y_title_pad,
+            x_title_size=x_title_size,
+            y_title_size=y_title_size,
+            tick_label_size=tick_label_size,
+            invert_y_axis=True
+        )
 
         # Adding text annotations for each cell
         if show_text:
