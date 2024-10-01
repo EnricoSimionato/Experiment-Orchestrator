@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from datetime import datetime
+
 import yaml
 import logging
 import os
 import pickle as pkl
 from typing import Any
 
-import torch.nn as nn
+import torch
 
 import pytorch_lightning as pl
 
@@ -46,7 +47,7 @@ class Experiment:
     Args:
         task (str):
             The task to perform.
-        model (nn.Module):
+        model (torch.nn.Module):
             The model to use.
         dataset (pl.LightningDataModule):
             The dataset to use.
@@ -62,7 +63,7 @@ class Experiment:
     Attributes:
         task (str):
             The task to perform.
-        model (nn.Module | transformers.AutoModel | transformers.PreTrainedModel):
+        model (torch.nn.Module | transformers.AutoModel | transformers.PreTrainedModel):
             The model to use.
         dataset (pl.LightningDataModule):
             The dataset to use.
@@ -81,7 +82,7 @@ class Experiment:
     def __init__(
             self,
             task: str,
-            model: [nn.Module | transformers.AutoModel | transformers.PreTrainedModel],
+            model: [torch.nn.Module | transformers.AutoModel | transformers.PreTrainedModel],
             dataset: pl.LightningDataModule,
             config: Config,
             tokenizer: AutoTokenizer | PreTrainedTokenizer = None,
@@ -398,12 +399,12 @@ class Experiment:
 
     def get_model(
             self
-    ) -> nn.Module:
+    ) -> torch.nn.Module:
         """
         Returns the model.
 
         Returns:
-            nn.Module:
+            torch.nn.Module:
                 The model.
         """
 
@@ -684,6 +685,13 @@ class GeneralPurposeExperiment(ABC):
                 (current_value, stored_value).
         """
 
+        not_evaluated_keys = ["version", "file_available", "just_plot"]
+        for key in not_evaluated_keys:
+            if key in current_config:
+                del current_config[key]
+            if key in stored_config:
+                del stored_config[key]
+
         differences = {}
         for key in current_config:
             if key in stored_config:
@@ -779,16 +787,61 @@ class GeneralPurposeExperiment(ABC):
     ) -> None:
         """
         Stores the data in a file.
+
+        Args:
+            data (Any):
+                The data to store.
+            file_name (str):
+                The name of the file where to store the data.
+            extension (str, optional):
+                The extension of the file. Defaults to "pkl".
         """
 
         if data is None:
             raise ValueError("The data to store is None.")
 
+        self.log(f"Trying to store data in file '{file_name}' with extension '{extension}'.")
         if extension == "pkl":
             with open(os.path.join(self.config.get("directory_path"), file_name), "wb") as f:
                 pkl.dump(data, f)
+        elif extension == "pt":
+            with open(os.path.join(self.config.get("directory_path"), file_name), "wb") as f:
+                torch.save(data, f)
         else:
             raise NotImplementedError(f"Extension {extension} not implemented.")
+        self.log(f"Successfully stored data in file '{os.path.join(self.config.get('directory_path'), file_name)}'.")
+
+    def load(
+            self,
+            file_name: str,
+            extension: str = "pkl"
+    ) -> Any:
+        """
+        Loads the data from a file.
+
+        Args:
+            file_name (str):
+                The name of the file where to load the data.
+            extension (str, optional):
+                The extension of the file. Defaults to "pkl".
+        """
+
+        self.log(f"Trying to load data from file '{file_name}' with extension '{extension}'.")
+        try:
+            if extension == "pkl":
+                with open(os.path.join(self.config.get("directory_path"), file_name), "rb") as f:
+                    data = pkl.load(f)
+            elif extension == "pt":
+                with open(os.path.join(self.config.get("directory_path"), file_name), "rb") as f:
+                    data = torch.load(f)
+            else:
+                raise NotImplementedError(f"Extension {extension} not implemented.")
+            self.log(f"Successfully loaded data from file '{os.path.join(self.config.get('directory_path'), file_name)}'.")
+        except FileNotFoundError:
+            self.log(f"File '{os.path.join(self.config.get('directory_path'), file_name)}' not found.")
+            data = None
+
+        return data
 
 
 class NopGeneralPurposeExperiment(GeneralPurposeExperiment):

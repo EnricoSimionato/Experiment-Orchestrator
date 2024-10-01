@@ -10,7 +10,7 @@ import lm_eval
 benchmark_id_metric_name_mapping = {
     "arc_challenge": "acc_norm,none",
     "hellaswag": "acc_norm,none",
-    "gsm8k": "acc_norm,none",
+    "gsm8k": "exact_match,flexible-extract",
     "mmlu": "acc_norm,none",
     "truthfulqa_mc1": "acc_norm,none",
     "winogrande": "acc_norm,none"

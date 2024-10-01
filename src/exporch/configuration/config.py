@@ -222,7 +222,7 @@ class Config:
             self
     ) -> dict:
         """
-        Returns the configuration as a dictionary.
+        Returns a copy of the configuration as a dictionary.
 
         Returns:
             dict:
