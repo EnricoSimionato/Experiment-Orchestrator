@@ -53,4 +53,3 @@ class NLPDataset(ABC, Dataset):
             idx (int):
                 Index of the sample to retrieve.
         """
-

@@ -55,18 +55,55 @@ class ConversationDataset(ABC, Dataset):
         """
 
 
-# TODO I think it has to be removed
-class OpenAssistantGuanacoDatasetDict:
+class DataModule(pl.LightningDataModule):
+    """
+    DataModule for the OpenAssistant-Guanaco dataset.
+
+    Args:
+        batch_size (int):
+            Size of the batch.
+        num_workers (int):
+            Number of workers to use for loading the data.
+        tokenizer (transformers.PreTrainedTokenizer):
+            Tokenizer to use to preprocess the data.
+        max_len (int):
+            Maximum length of the input sequences.
+        split (tuple[float, float, float]):
+            Split of the dataset into training, validation, and test sets.
+        seed (int):
+            Seed for the random number generator.
+
+    Attributes:
+        batch_size (int):
+            Size of the batch.
+        num_workers (int):
+            Number of workers to use for loading the data.
+        tokenizer (transformers.PreTrainedTokenizer):
+            Tokenizer to use to preprocess the data.
+        max_len (int):
+            Maximum length of the input sequences.
+        split (tuple[float, float, float]):
+            Split of the dataset into training, validation, and test sets.
+        seed (int):
+            Seed for the random number generator.
+        train (OpenAssistantGuanacoDataset):
+            Training dataset.
+        validation (OpenAssistantGuanacoDataset):
+            Validation dataset.
+        test (OpenAssistantGuanacoDataset):
+            Test dataset.
+    """
+
     def __init__(
             self,
+            batch_size,
+            num_workers,
             tokenizer,
             max_len: int,
-            split: tuple[float, float, float]
+            split: tuple[float, float, float],
+            seed: int = 42,
     ) -> None:
-        """
-        Initializes the dataset loading it from .
-        """
-
+        super().__init__()
         if len(split) != 3:
             raise ValueError(
                 "The split must have three elements (train, validation, test)."
@@ -76,19 +113,131 @@ class OpenAssistantGuanacoDatasetDict:
                 "The sum of the split elements must be equal to 1."
             )
 
-        raw_dataset = load_dataset("openassistant-guanaco")
-        merged_raw_dataset = concatenate_datasets([raw_dataset[key] for key in raw_dataset.keys()])
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.tokenizer = tokenizer
+        self.max_len = max_len
+        self.split = split
+        self.seed = seed
 
-        first_split_raw_dataset = merged_raw_dataset.train_test_split(
-            test_size=split[2]
+        self.train = None
+        self.validation = None
+        self.test = None
+
+    def prepare_data(
+            self,
+            **kwargs
+    ):
+        """
+        Downloads the data.
+        Runs on a single GPU.
+
+        Args:
+            kwargs:
+                Additional keyword arguments.
+        """
+
+        load_dataset(
+            "timdettmers/openassistant-guanaco",
+        )
+
+    def setup(
+            self,
+            stage: Optional[str] = None,
+            **kwargs
+    ) -> None:
+        """
+        Preprocesses data.
+        Can run on multiple GPUs.
+
+
+        Args:
+            stage (Optional[str]):
+                Stage of the experiment.
+            kwargs:
+                Additional keyword arguments.
+        """
+
+        raw_dataset = load_dataset(
+            "timdettmers/openassistant-guanaco",
+        )
+
+        concatenated_raw_dataset = concatenate_datasets([raw_dataset["train"], raw_dataset["test"]])
+
+        first_split_raw_dataset = concatenated_raw_dataset.train_test_split(
+            test_size=self.split[2]
         )
         second_split_raw_dataset = first_split_raw_dataset["train"].train_test_split(
-            test_size=split[1]/((1-split[2]) if split[2] != 1 else 1)
+            test_size=self.split[1] / ((1 - self.split[2]) if self.split[2] != 1 else 1)
         )
 
-        self.train = OpenAssistantGuanacoDataset(second_split_raw_dataset["train"], tokenizer, max_len)
-        self.validation = OpenAssistantGuanacoDataset(second_split_raw_dataset["test"], tokenizer, max_len)
-        self.test = OpenAssistantGuanacoDataset(first_split_raw_dataset["test"], tokenizer, max_len)
+        self.train = OpenAssistantGuanacoDataset(
+            second_split_raw_dataset["train"],
+            self.tokenizer,
+            self.max_len
+        )
+        self.validation = OpenAssistantGuanacoDataset(
+            second_split_raw_dataset["test"],
+            self.tokenizer,
+            self.max_len
+        )
+        self.test = OpenAssistantGuanacoDataset(
+            first_split_raw_dataset["test"],
+            self.tokenizer,
+            self.max_len
+        )
+
+    def train_dataloader(
+            self
+    ) -> DataLoader:
+        """
+        Returns the training DataLoader.
+
+        Returns:
+            DataLoader:
+                Training DataLoader.
+        """
+
+        return DataLoader(
+            self.train,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            shuffle=True
+        )
+
+    def val_dataloader(
+            self
+    ) -> DataLoader:
+        """
+        Returns the validation DataLoader.
+
+        Returns:
+            DataLoader:
+                Validation DataLoader.
+        """
+
+        return DataLoader(
+            self.validation,
+            batch_size=self.batch_size * 2,
+            num_workers=self.num_workers
+        )
+
+    def test_dataloader(
+            self
+    ) -> DataLoader:
+        """
+        Returns the test DataLoader.
+
+        Returns:
+            DataLoader:
+                Test DataLoader.
+        """
+
+        return DataLoader(
+            self.test,
+            batch_size=self.batch_size * 2,
+            num_workers=self.num_workers
+        )
 
 
 class OpenAssistantGuanacoDataset(ConversationDataset):
@@ -238,8 +387,6 @@ class OpenAssistantGuanacoDataModule(pl.LightningDataModule):
             Split of the dataset into training, validation, and test sets.
         seed (int):
             Seed for the random number generator.
-        **kwargs:
-            Additional keyword arguments.
 
     Attributes:
         batch_size (int):
@@ -270,8 +417,7 @@ class OpenAssistantGuanacoDataModule(pl.LightningDataModule):
             max_len: int,
             split: tuple[float, float, float],
             seed: int = 42,
-            **kwargs
-    ):
+    ) -> None:
         super().__init__()
         if len(split) != 3:
             raise ValueError(
@@ -298,7 +444,8 @@ class OpenAssistantGuanacoDataModule(pl.LightningDataModule):
             **kwargs
     ):
         """
-        Downloads the data. Runs on a single GPU.
+        Downloads the data.
+        Runs on a single GPU.
 
         Args:
             kwargs:
@@ -315,7 +462,8 @@ class OpenAssistantGuanacoDataModule(pl.LightningDataModule):
             **kwargs
     ) -> None:
         """
-        Preprocesses data. Can run on multiple GPUs.
+        Preprocesses data.
+        Can run on multiple GPUs.
 
 
         Args:
@@ -324,6 +472,7 @@ class OpenAssistantGuanacoDataModule(pl.LightningDataModule):
             kwargs:
                 Additional keyword arguments.
         """
+
         raw_dataset = load_dataset(
             "timdettmers/openassistant-guanaco",
         )
@@ -404,3 +553,175 @@ class OpenAssistantGuanacoDataModule(pl.LightningDataModule):
             batch_size=self.batch_size * 2,
             num_workers=self.num_workers
         )
+
+
+class Wikitext2Dataset(Dataset):
+    """
+    Dataset class to handle Wikitext-2 dataset for language modeling tasks.
+
+    Args:
+        split (str): One of 'train', 'validation', 'test'.
+        tokenizer (transformers.PreTrainedTokenizer): Tokenizer to preprocess the data.
+        max_length (int): Maximum length of input sequences.
+    """
+
+    def __init__(self, split: str, tokenizer, max_length: int = 512):
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+        self.dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split=split)
+        self.examples = self.tokenizer(self.dataset['text'], truncation=True, padding="max_length",
+                                       max_length=self.max_length, return_tensors="pt")
+
+    def __len__(self):
+        return len(self.examples['input_ids'])
+
+    def __getitem__(self, idx):
+        return {
+            'input_ids': self.examples['input_ids'][idx],
+            'attention_mask': self.examples['attention_mask'][idx],
+            'labels': self.examples['input_ids'][idx]
+        }
+
+
+class Wikitext2DataModule(pl.LightningDataModule):
+    """
+    DataModule for Wikitext-2 dataset for language modeling tasks.
+
+    Args:
+        batch_size (int):
+            Size of the batch.
+        num_workers (int):
+            Number of workers to use for loading the data.
+        tokenizer (transformers.PreTrainedTokenizer):
+            Tokenizer to use to preprocess the data.
+        max_len (int):
+            Maximum length of the input sequences.
+        split (tuple[float, float, float]):
+            Split of the dataset into training, validation, and test sets.
+        seed (int):
+            Seed for the random number generator.
+        **kwargs:
+            Additional keyword arguments.
+
+    Attributes:
+        batch_size (int):
+            Size of the batch.
+        num_workers (int):
+            Number of workers to use for loading the data.
+        tokenizer (transformers.PreTrainedTokenizer):
+            Tokenizer to use to preprocess the data.
+        max_len (int):
+            Maximum length of the input sequences.
+        split (tuple[float, float, float]):
+            Split of the dataset into training, validation, and test sets.
+        seed (int):
+            Seed for the random number generator.
+        train (OpenAssistantGuanacoDataset):
+            Training dataset.
+        validation (OpenAssistantGuanacoDataset):
+            Validation dataset.
+        test (OpenAssistantGuanacoDataset):
+            Test dataset.
+    """
+
+    def __init__(
+            self,
+            batch_size,
+            num_workers,
+            tokenizer,
+            max_len: int,
+            split: tuple[float, float, float],
+            seed: int = 42,
+    ) -> None:
+        super().__init__()
+        if len(split) != 3:
+            raise ValueError(
+                "The split must have three elements (train, validation, test)."
+            )
+        if sum(split) != 1:
+            raise ValueError(
+                "The sum of the split elements must be equal to 1."
+            )
+
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.tokenizer = tokenizer
+        self.max_len = max_len
+        self.split = split
+        self.seed = seed
+
+        self.train = None
+        self.validation = None
+        self.test = None
+
+    def prepare_data(
+            self,
+            **kwargs
+    ):
+        """
+        Downloads the data.
+        Runs on a single GPU.
+
+        Args:
+            kwargs:
+                Additional keyword arguments.
+        """
+        # TODO fix name
+        load_dataset(
+            "wikitext2",
+        )
+
+    def setup(
+            self,
+            stage: Optional[str] = None,
+            **kwargs
+    ) -> None:
+        """
+        Preprocesses data.
+        Can run on multiple GPUs.
+
+
+        Args:
+            stage (Optional[str]):
+                Stage of the experiment.
+            kwargs:
+                Additional keyword arguments.
+        """
+
+        raw_dataset = load_dataset(
+            "timdettmers/openassistant-guanaco",
+        )
+
+        concatenated_raw_dataset = concatenate_datasets([raw_dataset["train"], raw_dataset["test"]])
+
+        first_split_raw_dataset = concatenated_raw_dataset.train_test_split(
+            test_size=self.split[2]
+        )
+        second_split_raw_dataset = first_split_raw_dataset["train"].train_test_split(
+            test_size=self.split[1] / ((1 - self.split[2]) if self.split[2] != 1 else 1)
+        )
+
+        self.train = Wikitext2Dataset(
+            second_split_raw_dataset["train"],
+            self.tokenizer,
+            self.max_len
+        )
+        self.validation = Wikitext2Dataset(
+            second_split_raw_dataset["test"],
+            self.tokenizer,
+            self.max_len
+        )
+        self.test = Wikitext2Dataset(
+            first_split_raw_dataset["test"],
+            self.tokenizer,
+            self.max_len
+        )
+
+    def train_dataloader(self):
+        return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True)
+
+    def val_dataloader(self):
+        return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
+
+    def test_dataloader(self):
+        return DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
