@@ -6,7 +6,7 @@ import transformers
 
 import lm_eval
 
-from exporch import get_available_device
+from exporch.utils.device_utils.device_utils import get_available_device
 
 benchmark_id_metric_name_mapping = {
     "arc_challenge": "acc_norm,none",
