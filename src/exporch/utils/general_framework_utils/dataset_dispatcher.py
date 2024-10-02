@@ -1,10 +1,13 @@
+import transformers
+
 from exporch.utils.causal_language_modeling.pl_datasets import OpenAssistantGuanacoDataModule, Wikitext2DataModule
 from exporch.utils.classification.pl_datasets import IMDBDataModule
 
 
 def get_datamodule(
         datamodule_id: str,
-        *args,
+        tokenizer: transformers.AutoTokenizer | transformers.PreTrainedTokenizer,
+        max_len: int,
         **kwargs
 ):
     """
@@ -13,8 +16,10 @@ def get_datamodule(
     Args:
         datamodule_id (str):
             The dataset id.
-        *args:
-            Additional arguments to pass to the dataset.
+        tokenizer (transformers.AutoTokenizer | transformers.PreTrainedTokenizer):
+            The tokenizer to use.
+        max_len (int):
+            The maximum length of the input sequences.
         **kwargs:
             Additional keyword arguments to pass to the dataset
 
@@ -24,10 +29,10 @@ def get_datamodule(
     """
 
     if datamodule_id == "imdb":
-        return IMDBDataModule(*args, **kwargs)
+        return IMDBDataModule(tokenizer, max_len, **kwargs)
     elif datamodule_id == "openassistant-guanaco":
-        return OpenAssistantGuanacoDataModule(*args, **kwargs)
+        return OpenAssistantGuanacoDataModule(tokenizer, max_len, **kwargs)
     elif datamodule_id == "wikitext2":
-        return Wikitext2DataModule(*args, **kwargs)
+        return Wikitext2DataModule(tokenizer, max_len, **kwargs)
     else:
         raise ValueError(f"Unknown datamodule id: {datamodule_id}")

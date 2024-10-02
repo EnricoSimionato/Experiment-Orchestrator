@@ -561,9 +561,11 @@ class GeneralPurposeExperiment(ABC):
         # Loading the data if the file is available
         data = None
         if file_available:
-            print(f"The file '{self.config.get('file_path')}' is available.")
+            self.log(f"The file '{self.config.get('file_path')}' is available.", print_message=True)
+            self.log(f"Trying to load the data from the file '{self.config.get('file_path')}'.")
             with open(self.config.get("file_path"), "rb") as f:
                 data = pkl.load(f)
+            self.log(f"Successfully loaded the data from the file '{self.config.get('file_path')}'.")
 
         self.data = data
 
@@ -610,6 +612,7 @@ class GeneralPurposeExperiment(ABC):
     def log(
             self,
             message: str,
+            print_message: bool = False,
             level: str = "info"
     ) -> None:
         """
@@ -618,6 +621,8 @@ class GeneralPurposeExperiment(ABC):
         Args:
             message (str):
                 The message to log.
+            print_message (bool, optional):
+                Whether to print the message. Defaults to False.
             level (str, optional):
                 The level of the log. Defaults to "info".
         """
@@ -627,6 +632,9 @@ class GeneralPurposeExperiment(ABC):
             self.logger.info(message)
         else:
             raise NotImplementedError("Only info level is implemented.")
+
+        if print_message:
+            print(message)
 
     def check_stored_configuration_consistency(
             self,

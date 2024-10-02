@@ -16,9 +16,9 @@ from datasets import load_dataset, concatenate_datasets
 import re
 
 
-class ConversationDataset(ABC, Dataset):
+class LanguageModelingDataset(ABC, Dataset):
     """
-    Dataset for sentiment analysis.
+    Dataset for language modeling tasks.
     """
 
     def __init__(
@@ -55,21 +55,28 @@ class ConversationDataset(ABC, Dataset):
         """
 
 
+class ConversationDataset(LanguageModelingDataset, ABC):
+    """
+    Dataset for conversation modeling tasks.
+    """
+
+
+# TODO MAKE A GENERAL CLASS FOR ALL DATASETS
 class DataModule(pl.LightningDataModule):
     """
-    DataModule for the OpenAssistant-Guanaco dataset.
+    DataModule.
 
     Args:
-        batch_size (int):
-            Size of the batch.
-        num_workers (int):
-            Number of workers to use for loading the data.
         tokenizer (transformers.PreTrainedTokenizer):
             Tokenizer to use to preprocess the data.
         max_len (int):
             Maximum length of the input sequences.
         split (tuple[float, float, float]):
-            Split of the dataset into training, validation, and test sets.
+            Split of the dataset into training, validation, and test sets. Defaults to (0.8, 0.1, 0.1).
+        batch_size (int):
+            Size of the batch. Defaults to 1.
+        num_workers (int):
+            Number of workers to use for loading the data. Defaults to 1.
         seed (int):
             Seed for the random number generator.
 
@@ -96,11 +103,11 @@ class DataModule(pl.LightningDataModule):
 
     def __init__(
             self,
-            batch_size,
-            num_workers,
             tokenizer,
             max_len: int,
-            split: tuple[float, float, float],
+            split: tuple[float, float, float] = (0.8, 0.1, 0.1),
+            batch_size: int = 1,
+            num_workers: int = 1,
             seed: int = 42,
     ) -> None:
         super().__init__()
@@ -113,11 +120,11 @@ class DataModule(pl.LightningDataModule):
                 "The sum of the split elements must be equal to 1."
             )
 
-        self.batch_size = batch_size
-        self.num_workers = num_workers
         self.tokenizer = tokenizer
         self.max_len = max_len
         self.split = split
+        self.batch_size = batch_size
+        self.num_workers = num_workers
         self.seed = seed
 
         self.train = None
@@ -251,8 +258,6 @@ class OpenAssistantGuanacoDataset(ConversationDataset):
             Tokenizer to use to preprocess the data.
         max_length (int):
             Maximum length of the input sequences.
-        **kwargs:
-            Additional keyword arguments.
 
     Attributes:
         tokenizer (transformers.PreTrainedTokenizer):
@@ -270,7 +275,6 @@ class OpenAssistantGuanacoDataset(ConversationDataset):
             raw_dataset: datasets.Dataset,
             tokenizer: transformers.PreTrainedTokenizer,
             max_length: int = 512,
-            **kwargs
     ):
         super().__init__(
             "timdettmers/openassistant-guanaco",
@@ -288,7 +292,6 @@ class OpenAssistantGuanacoDataset(ConversationDataset):
     def preprocess(
             self,
             raw_dataset,
-            **kwargs
     ) -> None:
         """
         Preprocesses the dataset.
@@ -300,8 +303,6 @@ class OpenAssistantGuanacoDataset(ConversationDataset):
         Args:
             raw_dataset (datasets.Dataset):
                 Raw dataset.
-            kwargs:
-                Additional keyword arguments.
         """
 
         texts = [
@@ -375,30 +376,30 @@ class OpenAssistantGuanacoDataModule(pl.LightningDataModule):
     DataModule for the OpenAssistant-Guanaco dataset.
 
     Args:
-        batch_size (int):
-            Size of the batch.
-        num_workers (int):
-            Number of workers to use for loading the data.
         tokenizer (transformers.PreTrainedTokenizer):
             Tokenizer to use to preprocess the data.
         max_len (int):
             Maximum length of the input sequences.
         split (tuple[float, float, float]):
-            Split of the dataset into training, validation, and test sets.
+            Split of the dataset into training, validation, and test sets. Defaults to (0.8, 0.1, 0.1).
+        batch_size (int):
+            Size of the batch. Defaults to 1.
+        num_workers (int):
+            Number of workers to use for loading the data. Defaults to 1.
         seed (int):
             Seed for the random number generator.
 
     Attributes:
-        batch_size (int):
-            Size of the batch.
-        num_workers (int):
-            Number of workers to use for loading the data.
         tokenizer (transformers.PreTrainedTokenizer):
             Tokenizer to use to preprocess the data.
         max_len (int):
             Maximum length of the input sequences.
         split (tuple[float, float, float]):
             Split of the dataset into training, validation, and test sets.
+        batch_size (int):
+            Size of the batch.
+        num_workers (int):
+            Number of workers to use for loading the data.
         seed (int):
             Seed for the random number generator.
         train (OpenAssistantGuanacoDataset):
@@ -411,11 +412,11 @@ class OpenAssistantGuanacoDataModule(pl.LightningDataModule):
 
     def __init__(
             self,
-            batch_size,
-            num_workers,
             tokenizer,
             max_len: int,
-            split: tuple[float, float, float],
+            split: tuple[float, float, float] = (0.8, 0.1, 0.1),
+            batch_size: int = 1,
+            num_workers: int = 1,
             seed: int = 42,
     ) -> None:
         super().__init__()
@@ -428,11 +429,11 @@ class OpenAssistantGuanacoDataModule(pl.LightningDataModule):
                 "The sum of the split elements must be equal to 1."
             )
 
-        self.batch_size = batch_size
-        self.num_workers = num_workers
         self.tokenizer = tokenizer
         self.max_len = max_len
         self.split = split
+        self.batch_size = batch_size
+        self.num_workers = num_workers
         self.seed = seed
 
         self.train = None
@@ -513,6 +514,9 @@ class OpenAssistantGuanacoDataModule(pl.LightningDataModule):
                 Training DataLoader.
         """
 
+        if self.train is None:
+            self.setup()
+
         return DataLoader(
             self.train,
             batch_size=self.batch_size,
@@ -531,6 +535,9 @@ class OpenAssistantGuanacoDataModule(pl.LightningDataModule):
                 Validation DataLoader.
         """
 
+        if self.validation is None:
+            self.setup()
+
         return DataLoader(
             self.validation,
             batch_size=self.batch_size * 2,
@@ -548,6 +555,9 @@ class OpenAssistantGuanacoDataModule(pl.LightningDataModule):
                 Test DataLoader.
         """
 
+        if self.test is None:
+            self.setup()
+
         return DataLoader(
             self.test,
             batch_size=self.batch_size * 2,
@@ -555,32 +565,109 @@ class OpenAssistantGuanacoDataModule(pl.LightningDataModule):
         )
 
 
-class Wikitext2Dataset(Dataset):
+class Wikitext2Dataset(LanguageModelingDataset):
     """
-    Dataset class to handle Wikitext-2 dataset for language modeling tasks.
+    Dataset class to use OpenAssistant-Guanaco dataset with Pytorch and Pytorch Lightning.
 
     Args:
-        split (str): One of 'train', 'validation', 'test'.
-        tokenizer (transformers.PreTrainedTokenizer): Tokenizer to preprocess the data.
-        max_length (int): Maximum length of input sequences.
+        raw_dataset (datasets.Dataset):
+            Raw dataset.
+        tokenizer (transformers.PreTrainedTokenizer):
+            Tokenizer to use to preprocess the data.
+        max_length (int):
+            Maximum length of the input sequences.
+
+    Attributes:
+        tokenizer (transformers.PreTrainedTokenizer):
+            Tokenizer to use to preprocess the data.
+        max_length (int):
+            Maximum length of the input sequences.
+        dataset (list):
+            Tokenized dataset.
     """
 
-    def __init__(self, split: str, tokenizer, max_length: int = 512):
+    def __init__(
+            self,
+            raw_dataset: datasets.Dataset,
+            tokenizer: transformers.PreTrainedTokenizer,
+            max_length: int = 512,
+    ):
+        super().__init__(
+            "wikitext-2-raw-v1",
+            tokenizer
+        )
+
         self.tokenizer = tokenizer
         self.max_length = max_length
-        self.dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split=split)
-        self.examples = self.tokenizer(self.dataset['text'], truncation=True, padding="max_length",
-                                       max_length=self.max_length, return_tensors="pt")
 
-    def __len__(self):
-        return len(self.examples['input_ids'])
+        self.dataset = []
 
-    def __getitem__(self, idx):
-        return {
-            'input_ids': self.examples['input_ids'][idx],
-            'attention_mask': self.examples['attention_mask'][idx],
-            'labels': self.examples['input_ids'][idx]
-        }
+        self.preprocess(raw_dataset)
+
+    def preprocess(
+            self,
+            raw_dataset,
+    ) -> None:
+        """
+        Preprocesses the dataset.
+        The text is tokenized and padded to the maximum length.
+
+        Args:
+            raw_dataset (datasets.Dataset):
+                Raw dataset.
+        """
+
+        tokenized_texts = [self.tokenizer(
+            text,
+            padding="max_length",
+            max_length=self.max_length,
+            truncation=True,
+            return_tensors="pt",
+            return_attention_mask=True,
+            add_special_tokens=True
+        ) for text in raw_dataset["text"]]
+
+        self.dataset = [
+            {
+                "input_ids": input_encoding["input_ids"].squeeze(0),
+                "labels": input_encoding["input_ids"].clone().squeeze(0),
+                "attention_mask": input_encoding["attention_mask"].squeeze(0)
+            }
+            for input_encoding in tokenized_texts]
+
+        for idx, _ in enumerate(self.dataset):
+            self.dataset[idx]["labels"][["attention_mask"] == 0] = -100
+
+    def __len__(
+            self
+    ):
+        """
+        Returns the length of the dataset.
+
+        Returns:
+            int:
+                Length of the dataset.
+        """
+
+        return len(self.dataset)
+
+    def __getitem__(
+            self,
+            idx
+    ) -> dict:
+        """
+        Retrieves a sample from the dataset at the given index.
+
+        Args:
+            idx (int):
+                Index of the sample to retrieve.
+
+        Returns:
+            dict:
+                Dictionary containing the tokenized inputs.
+        """
+
+        return self.dataset[idx]
 
 
 class Wikitext2DataModule(pl.LightningDataModule):
@@ -588,32 +675,30 @@ class Wikitext2DataModule(pl.LightningDataModule):
     DataModule for Wikitext-2 dataset for language modeling tasks.
 
     Args:
-        batch_size (int):
-            Size of the batch.
-        num_workers (int):
-            Number of workers to use for loading the data.
         tokenizer (transformers.PreTrainedTokenizer):
             Tokenizer to use to preprocess the data.
         max_len (int):
             Maximum length of the input sequences.
         split (tuple[float, float, float]):
-            Split of the dataset into training, validation, and test sets.
+            Split of the dataset into training, validation, and test sets. Defaults to (0.8, 0.1, 0.1).
+        batch_size (int):
+            Size of the batch. Defaults to 1.
+        num_workers (int):
+            Number of workers to use for loading the data. Defaults to 1.
         seed (int):
             Seed for the random number generator.
-        **kwargs:
-            Additional keyword arguments.
 
     Attributes:
-        batch_size (int):
-            Size of the batch.
-        num_workers (int):
-            Number of workers to use for loading the data.
         tokenizer (transformers.PreTrainedTokenizer):
             Tokenizer to use to preprocess the data.
         max_len (int):
             Maximum length of the input sequences.
         split (tuple[float, float, float]):
             Split of the dataset into training, validation, and test sets.
+        batch_size (int):
+            Size of the batch.
+        num_workers (int):
+            Number of workers to use for loading the data.
         seed (int):
             Seed for the random number generator.
         train (OpenAssistantGuanacoDataset):
@@ -626,11 +711,11 @@ class Wikitext2DataModule(pl.LightningDataModule):
 
     def __init__(
             self,
-            batch_size,
-            num_workers,
             tokenizer,
             max_len: int,
-            split: tuple[float, float, float],
+            split: tuple[float, float, float] = (0.8, 0.1, 0.1),
+            batch_size: int = 1,
+            num_workers: int = 1,
             seed: int = 42,
     ) -> None:
         super().__init__()
@@ -643,11 +728,11 @@ class Wikitext2DataModule(pl.LightningDataModule):
                 "The sum of the split elements must be equal to 1."
             )
 
-        self.batch_size = batch_size
-        self.num_workers = num_workers
         self.tokenizer = tokenizer
         self.max_len = max_len
         self.split = split
+        self.batch_size = batch_size
+        self.num_workers = num_workers
         self.seed = seed
 
         self.train = None
@@ -666,9 +751,9 @@ class Wikitext2DataModule(pl.LightningDataModule):
             kwargs:
                 Additional keyword arguments.
         """
-        # TODO fix name
+
         load_dataset(
-            "wikitext2",
+            "wikitext", "wikitext-2-raw-v1",
         )
 
     def setup(
@@ -689,7 +774,7 @@ class Wikitext2DataModule(pl.LightningDataModule):
         """
 
         raw_dataset = load_dataset(
-            "timdettmers/openassistant-guanaco",
+            "wikitext", "wikitext-2-raw-v1",
         )
 
         concatenated_raw_dataset = concatenate_datasets([raw_dataset["train"], raw_dataset["test"]])
@@ -717,11 +802,63 @@ class Wikitext2DataModule(pl.LightningDataModule):
             self.max_len
         )
 
-    def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True)
+    def train_dataloader(
+            self
+    ) -> DataLoader:
+        """
+        Returns the training DataLoader.
 
-    def val_dataloader(self):
-        return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
+        Returns:
+            DataLoader:
+                Training DataLoader.
+        """
 
-    def test_dataloader(self):
-        return DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
+        if self.train is None:
+            self.setup()
+
+        return DataLoader(
+            self.train,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            shuffle=True
+        )
+
+    def val_dataloader(
+            self
+    ) -> DataLoader:
+        """
+        Returns the validation DataLoader.
+
+        Returns:
+            DataLoader:
+                Validation DataLoader.
+        """
+
+        if self.validation is None:
+            self.setup()
+
+        return DataLoader(
+            self.validation,
+            batch_size=self.batch_size * 2,
+            num_workers=self.num_workers
+        )
+
+    def test_dataloader(
+            self
+    ) -> DataLoader:
+        """
+        Returns the test DataLoader.
+
+        Returns:
+            DataLoader:
+                Test DataLoader.
+        """
+
+        if self.test is None:
+            self.setup()
+
+        return DataLoader(
+            self.test,
+            batch_size=self.batch_size * 2,
+            num_workers=self.num_workers
+        )

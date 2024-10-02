@@ -375,32 +375,30 @@ class IMDBDataModule(pl.LightningDataModule):
     DataModule for the IMDB dataset.
 
     Args:
+        tokenizer (transformers.PreTrainedTokenizer):
+            Tokenizer to use to preprocess the data.
+        max_len (int):
+            Maximum length of the input sequences.
+        split (tuple[float, float, float]):
+            Split of the dataset into training, validation, and test sets.
         batch_size (int):
             Size of the batch.
         num_workers (int):
             Number of workers to use for data loading.
+        seed (int):
+            Seed for the random number generator.
+
+    Attributes:
         tokenizer (transformers.PreTrainedTokenizer):
             Tokenizer to use to preprocess the data.
         max_len (int):
             Maximum length of the input sequences.
         split (tuple[float, float, float]):
             Split of the dataset into training, validation, and test sets.
-        seed (int):
-            Seed for the random number generator.
-        **kwargs:
-            Additional keyword arguments.
-
-    Attributes:
         batch_size (int):
             Size of the batch.
         num_workers (int):
             Number of workers to use for loading the data.
-        tokenizer (transformers.PreTrainedTokenizer):
-            Tokenizer to use to preprocess the data.
-        max_len (int):
-            Maximum length of the input sequences.
-        split (tuple[float, float, float]):
-            Split of the dataset into training, validation, and test sets.
         seed (int):
             Seed for the random number generator.
         train (IMDBDataset):
@@ -413,13 +411,12 @@ class IMDBDataModule(pl.LightningDataModule):
 
     def __init__(
             self,
-            batch_size,
-            num_workers,
             tokenizer,
             max_len: int,
             split: tuple[float, float, float],
+            batch_size,
+            num_workers,
             seed: int = 42,
-            **kwargs
     ):
         super().__init__()
         if len(split) != 3:
@@ -431,11 +428,11 @@ class IMDBDataModule(pl.LightningDataModule):
                 "The sum of the split elements must be equal to 1."
             )
 
-        self.batch_size = batch_size
-        self.num_workers = num_workers
         self.tokenizer = tokenizer
         self.max_len = max_len
         self.split = split
+        self.batch_size = batch_size
+        self.num_workers = num_workers
         self.seed = seed
 
         self.train = None
@@ -455,14 +452,12 @@ class IMDBDataModule(pl.LightningDataModule):
         """
 
         load_dataset(
-            "stanfordnlp/imdb",
-            #data_dir=self.data_dir,
+            "stanfordnlp/imdb"
         )
 
     def setup(
             self,
             stage: Optional[str] = None,
-            **kwargs
     ) -> None:
         """
         Preprocesses data. Can run on multiple GPUs.
@@ -471,8 +466,6 @@ class IMDBDataModule(pl.LightningDataModule):
         Args:
             stage (Optional[str]):
                 Stage of the experiment.
-            kwargs:
-                Additional keyword arguments.
         """
 
         raw_dataset = load_dataset(
@@ -517,6 +510,9 @@ class IMDBDataModule(pl.LightningDataModule):
                 Training DataLoader.
         """
 
+        if self.train is None:
+            self.setup()
+
         return DataLoader(
             self.train,
             batch_size=self.batch_size,
@@ -535,6 +531,9 @@ class IMDBDataModule(pl.LightningDataModule):
                 Validation DataLoader.
         """
 
+        if self.validation is None:
+            self.setup()
+
         return DataLoader(
             self.validation,
             batch_size=self.batch_size * 2,
@@ -551,6 +550,9 @@ class IMDBDataModule(pl.LightningDataModule):
             DataLoader:
                 Test DataLoader.
         """
+
+        if self.test is None:
+            self.setup()
 
         return DataLoader(
             self.test,
