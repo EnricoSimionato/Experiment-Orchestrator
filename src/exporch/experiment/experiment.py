@@ -779,6 +779,24 @@ class GeneralPurposeExperiment(ABC):
         with open(self.config.get("file_path"), "wb") as f:
             pkl.dump(self.data, f)
 
+    def exists_file(
+            self,
+            file_name: str
+    ) -> bool:
+        """
+        Checks if a file exists in the directory path.
+
+        Args:
+            file_name (str):
+                The name of the file to check.
+
+        Returns:
+            bool:
+                True if the file exists, False otherwise.
+        """
+
+        return os.path.exists(os.path.join(self.config.get("directory_path"), file_name)) and os.path.isfile(os.path.join(self.config.get("directory_path"), file_name))
+
     def store(
             self,
             data: Any,
