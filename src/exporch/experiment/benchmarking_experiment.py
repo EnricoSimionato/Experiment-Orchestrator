@@ -6,6 +6,7 @@ import transformers
 
 import lm_eval
 
+from exporch import get_available_device
 
 benchmark_id_metric_name_mapping = {
     "arc_challenge": "acc_norm,none",
@@ -42,6 +43,11 @@ def evaluate_model_on_benchmark(
         dict:
             Dictionary of the results.
     """
+
+    try:
+        model.to(get_available_device(device))
+    except Exception:
+        pass
 
     logger = logging.getLogger(__name__)
     logger.info("Running the function evaluate_model_on_benchmark in the file lm_eval_pipeline.py.")

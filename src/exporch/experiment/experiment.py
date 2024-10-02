@@ -685,7 +685,7 @@ class GeneralPurposeExperiment(ABC):
                 (current_value, stored_value).
         """
 
-        not_evaluated_keys = ["version", "file_available", "just_plot"]
+        not_evaluated_keys = ["version", "file_available", "just_plot", "device"]
         for key in not_evaluated_keys:
             if key in current_config:
                 del current_config[key]
