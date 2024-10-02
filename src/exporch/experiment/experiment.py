@@ -825,6 +825,8 @@ class GeneralPurposeExperiment(ABC):
         elif extension == "pt":
             with open(os.path.join(self.config.get("directory_path"), file_name), "wb") as f:
                 torch.save(data, f)
+        elif extension == "plt":
+            data.savefig(os.path.join(self.config.get("directory_path"), file_name))
         else:
             raise NotImplementedError(f"Extension {extension} not implemented.")
         self.log(f"Successfully stored data in file '{os.path.join(self.config.get('directory_path'), file_name)}'.")

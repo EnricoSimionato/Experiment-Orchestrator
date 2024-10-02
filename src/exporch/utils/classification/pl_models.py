@@ -12,7 +12,7 @@ import transformers
 # TODO fix the refularized training
 #from exporch.models.factorized_model import RegularizedTrainingInterface, LoggingInterface
 from exporch.utils.classification.pl_metrics import ClassificationStats
-from exporch.utils.pl_utils.utility_mappings import optimizers_mapping
+from exporch.utils.general_framework_utils.utility_mappings import optimizers_mapping
 
 
 class ClassifierModelWrapper(pl.LightningModule):

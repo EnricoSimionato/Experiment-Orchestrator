@@ -15,7 +15,7 @@ from exporch.utils.causal_language_modeling.conversation_utils import (
     get_conversation_example_2,
     start_conversation_loop
 )
-from exporch.utils.pl_utils.utility_mappings import optimizers_mapping
+from exporch.utils.general_framework_utils.utility_mappings import optimizers_mapping
 
 
 # TODO change the loss in a metric and update the description of the model
