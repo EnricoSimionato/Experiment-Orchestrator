@@ -11,7 +11,7 @@ from exporch.utils.device_utils.device_utils import get_available_device
 benchmark_id_metric_name_mapping = {
     "arc_challenge": "acc_norm,none",
     "hellaswag": "acc_norm,none",
-    "gsm8k": "exact_match,flexible-extract",
+    "gsm8k": "exact_match,strict-match",
     "mmlu": "acc_norm,none",
     "truthfulqa_mc1": "acc_norm,none",
     "winogrande": "acc_norm,none"

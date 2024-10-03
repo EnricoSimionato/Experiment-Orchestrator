@@ -747,7 +747,18 @@ class GeneralPurposeExperiment(ABC):
         self.store_configuration()
         try :
             self.status = ExperimentStatus.RUNNING
-            self._run_experiment()
+            if self.config.contains("just_plot") and self.config.get("just_plot") and self.data is None:
+                raise ValueError("It is not possible to plot the results without performing the analysis. "
+                                 "Set 'just_plot' to False.")
+            if not self.config.contains("just_plot") or not self.config.get("just_plot"):
+                self.log(f"Starting the experiment.")
+                try:
+                    self._run_experiment()
+                except KeyboardInterrupt as e:
+                    self.log(f"Analysis interrupted by the user.", print_message=True)
+                    self.log(f"Interrupting the analysis again it will stop definitely.", print_message=True)
+                self._postprocess_results()
+            self._plot_results(self.config, self.data)
         except Exception as e:
             self.running_times[-1]["end_time"] = datetime.now()
             self.status = ExperimentStatus.STOPPED
@@ -764,6 +775,36 @@ class GeneralPurposeExperiment(ABC):
         """
         Runs the experiment. Performing the operations that are defined in the specific subclass of
         GeneralPurposeExperiment. This method is abstract and must be implemented in the specific subclass.
+        """
+
+        pass
+
+    @abstractmethod
+    def _postprocess_results(
+            self
+    ) -> None:
+        """
+        Post-processes the results obtained from the experiment.
+        The performed operations will depend on the specific subclass of GeneralPurposeExperiment.
+        """
+
+        pass
+
+    @abstractmethod
+    def _plot_results(
+            self,
+            config: Config,
+            data: Any
+    ) -> None:
+        """
+        Plots the results obtained from the experiment.
+        The performed operations will depend on the specific subclass of GeneralPurposeExperiment.
+
+        Args:
+            config (Config):
+                The configuration of the experiment.
+            data (Any):
+                The data obtained from the analysis.
         """
 
         pass

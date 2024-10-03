@@ -8,8 +8,8 @@ def get_datamodule(
         datamodule_id: str,
         tokenizer: transformers.AutoTokenizer | transformers.PreTrainedTokenizer,
         max_len: int,
-        **kwargs
-):
+        **kwargs: object
+) -> object:
     """
     Returns the dataset with the given id.
 
