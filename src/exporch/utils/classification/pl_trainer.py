@@ -11,7 +11,6 @@ from exporch.utils.device_utils.device_utils import get_available_device
 
 def get_classification_trainer(
         config: Config,
-        **kwargs
 ) -> pl.Trainer:
     """
     Returns the PyTorch Lightning trainer for a classification problem.

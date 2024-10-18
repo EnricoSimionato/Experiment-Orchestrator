@@ -7,13 +7,13 @@ version = "0.1.0"
 description = "A package for orchestrating experiments"
 authors = [{name = "Enrico Simionato"}]
 dependencies = [
-    "pyyaml",
+    "bitsandbytes",
+    "lm_eval",
     "matplotlib",
+    "peft",
+    "pyyaml",
+    "pytorch-lightning",
     "torch",
     "torchmetrics",
-    "pytorch-lightning",
-    "transformers",
-    "bitsandbytes",
-    "peft",
-    "lm_eval"
+    "transformers"
 ]

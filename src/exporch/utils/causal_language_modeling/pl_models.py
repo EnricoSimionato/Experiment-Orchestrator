@@ -609,32 +609,33 @@ class ChatbotModelWrapper(CausalLMModelWrapper):
     """
 
     def __init__(
-            self,
-            model: transformers.AutoModelForCausalLM,
-            tokenizer: transformers.AutoTokenizer | transformers.PreTrainedTokenizer,
-            learning_rate: float = 1e-5,
-            max_steps: int = 1,
-            warmup_steps: int = 0,
-            stop_tokens: list[str] = ("[INST]", "</s>"),
-            kfc_training: bool = False,
-            initial_regularization_weight: float = 0.01,
-            max_regularization_weight: float = 10000.0,
-            dtype: torch.dtype = torch.float32,
-            **kwargs
+        self,
+        model: transformers.AutoModelForCausalLM,
+        tokenizer: transformers.AutoTokenizer | transformers.PreTrainedTokenizer,
+        optimizers_settings: list[dict] = None,
+        max_steps: int = 1,
+        stop_tokens: list[str] = ("[INST]", "</s>"),
+        kfc_training: bool = False,
+        initial_regularization_weight: float = 0.01,
+        max_regularization_weight: float = 10.0,
+        start_step_regularization: int = 0,
+        steps_regularization_weight_resets: int = 1000,
+        path_to_storage: str = None,
+        dtype: torch.dtype = torch.float32,
+        **kwargs
     ) -> None:
         super().__init__(
             model,
             tokenizer,
-            learning_rate,
+            optimizers_settings,
             max_steps,
-            warmup_steps,
             stop_tokens,
             kfc_training,
             initial_regularization_weight,
             max_regularization_weight,
+            start_step_regularization,
+            steps_regularization_weight_resets,
+            path_to_storage,
             dtype,
             **kwargs
         )
-
-
-
