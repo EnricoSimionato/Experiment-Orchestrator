@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, override
 
 import numpy as np
 
@@ -18,40 +18,67 @@ from exporch.utils.causal_language_modeling.conversation_utils import (
 from exporch.utils.general_framework_utils.utility_mappings import optimizers_mapping
 
 
-# TODO change the loss in a metric and update the description of the model
 class CausalLMModelWrapper(pl.LightningModule):
     """
     Wrapper to train a CausalLMModel with Pytorch Lightning.
 
     Args:
-        model (transformers.AutoModelForCausalLM):
+        model (transformers.PreTrainedModel):
             The model to wrap.
         tokenizer (transformers.AutoTokenizer | transformers.PreTrainedTokenizer):
             Tokenizer object.
-        learning_rate (float):
-            Learning rate. Defaults to 1e-5.
-        max_epochs (int):
-            Maximum number of epochs. Defaults to 3.
-        warmup_steps (int):
-            Number of warmup steps. Defaults to 0.
-        kwargs:
-            Additional keyword arguments.
+        optimizers_settings (list[dict]):
+            List of dictionaries containing the optimizers' settings.
+        max_steps (int):
+            Maximum number of steps.
+        stop_tokens (list[str]):
+            List of stop tokens.
+        kfc_training (bool):
+            Whether to use KFC training.
+        initial_regularization_weight (float):
+            Initial regularization weight.
+        maximum_regularization_weight (float):
+            Maximum regularization weight.
+        start_step_regularization (int):
+            Step at which to start regularization.
+        steps_regularization_weight_resets (int):
+            Steps between regularization parameters resets.
+        path_to_storage (str):
+            Path to storage.
+        model_dtype (torch.dtype):
+            Data type.
 
     Attributes:
-        model (transformers.AutoModelForCausalLM):
+        model (transformers.PreTrainedModel):
             The model to wrap.
         tokenizer (transformers.AutoTokenizer | transformers.PreTrainedTokenizer):
             Tokenizer object.
-        learning_rate (float):
-            Learning rate.
-        max_epochs (int):
-            Maximum number of epochs.
-        warmup_steps (int):
-            Number of warmup steps.
+        optimizers_settings (list[dict]):
+            List of dictionaries containing the optimizers settings.
+        max_steps (int):
+            Maximum number of steps.
+        stop_tokens (list[str]):
+            List of stop tokens.
+        kfc_training (bool):
+            Whether to use KFC training.
+        initial_regularization_weight (float):
+            Initial regularization weight.
+        fixed_regularization_weight (torch.Tensor):
+            Fixed regularization weight.
+        adaptive_regularization_weight (torch.Tensor):
+            Adaptive regularization weight.
+        maximum_regularization_weight (torch.Tensor):
+            Maximum regularization weight.
+        start_step_regularization (int):
+            Step at which to start regularization.
+        steps_regularization_weight_resets (int):
+            Steps between regularization parameters resets.
+        path_to_storage (str):
+            Path to storage.
+        model_dtype (torch.dtype):
+            Data type.
         training_step_index (int):
             Index of the training step.
-        loss_history (dict[str, list[float]]):
-            History of the losses.
         training_step_losses_sum (float):
             Sum of the training step losses.
         training_step_losses_count (int):
@@ -64,6 +91,8 @@ class CausalLMModelWrapper(pl.LightningModule):
             Sum of the test step losses.
         test_step_losses_count (int):
             Number of test step losses.
+        loss_history (dict[str, list[float]]):
+            History of the losses.
     """
 
     weights_to_exclude = [
@@ -73,19 +102,18 @@ class CausalLMModelWrapper(pl.LightningModule):
 
     def __init__(
         self,
-        model: transformers.AutoModelForCausalLM,
+        model: transformers.PreTrainedModel,
         tokenizer: transformers.AutoTokenizer | transformers.PreTrainedTokenizer,
         optimizers_settings: list[dict] = None,
         max_steps: int = 1,
-        stop_tokens: list[str] = ("[INST]", "</s>"),
+        stop_tokens: list[str] = ("</s>",),
         kfc_training: bool = False,
-        initial_regularization_weight: float = 0.01,
-        max_regularization_weight: float = 10.0,
+        initial_regularization_weight: float | torch.Tensor = 0.01,
+        maximum_regularization_weight: float | torch.Tensor = 10.0,
         start_step_regularization: int = 0,
         steps_regularization_weight_resets: int = 1000,
         path_to_storage: str = None,
-        dtype: torch.dtype = torch.float32,
-        **kwargs
+        model_dtype: torch.dtype = torch.float32,
     ) -> None:
         super().__init__()
 
@@ -100,14 +128,8 @@ class CausalLMModelWrapper(pl.LightningModule):
         self.kfc_training = kfc_training
         self.initial_regularization_weight = initial_regularization_weight
         self.fixed_regularization_weight = None
-        self.adaptive_regularization_weight = torch.tensor(
-            initial_regularization_weight,
-            requires_grad=False
-        )
-        self.max_regularization_weight = torch.tensor(
-            max_regularization_weight,
-            requires_grad=False
-        )
+        self.adaptive_regularization_weight = torch.tensor(initial_regularization_weight, requires_grad=False)
+        self.maximum_regularization_weight = torch.tensor(maximum_regularization_weight, requires_grad=False)
         self.start_step_regularization = start_step_regularization
         self.steps_regularization_weight_resets = steps_regularization_weight_resets
 
@@ -127,25 +149,18 @@ class CausalLMModelWrapper(pl.LightningModule):
         }
 
         self.path_to_storage = path_to_storage
-        self.model_dtype = dtype
+        self.model_dtype = model_dtype
 
     def configure_optimizers(
             self,
-            **kwargs
-    ) -> dict[str, torch.optim.Optimizer | str | Any]:
+    ) -> list[dict[str, torch.optim.Optimizer | str | Any]]:
         """
         Configures the optimizer.
-
-        Args:
-            **kwargs:
-                Additional keyword arguments.
 
         Returns:
             list[dict[str, torch.optim.Optimizer | str | Any]]:
                 List of dictionaries containing the optimizer and the learning rate scheduler.
         """
-
-        # TODO TO FIX THE method
 
         if self.optimizers_settings is None or self.optimizers_settings == []:
             self.optimizers_settings = [
@@ -162,33 +177,40 @@ class CausalLMModelWrapper(pl.LightningModule):
                     "monitored_metric": "loss"
                 }
             ]
-        if not all(key in optimizer_settings for key in ["optimizer", "parameters_group", "learning_rate"] for
-                   optimizer_settings in self.optimizers_settings):
-            raise ValueError(
-                "The optimizers' settings are not well defined, they should contain the keys 'optimizer', 'parameters_group' and 'learning_rate'")
-        if not all(optimizer_settings["optimizer"].lower() in optimizers_mapping for optimizer_settings in
-                   self.optimizers_settings):
-            raise ValueError(
-                f"The following optimizers are not supported: {set(optimizer_settings['optimizer'] for optimizer_settings in self.optimizers_settings if optimizer_settings['optimizer'].lower() not in optimizers_mapping)}")
+
+        mandatory_keys = ["optimizer", "learning_rate"]
+        if not all(key in optimizer_settings for key in mandatory_keys for optimizer_settings in self.optimizers_settings):
+            raise ValueError(f"The optimizers' settings should contain the keys: '{', '.join(mandatory_keys)}'")
+        non_supported_optimizers = set(optimizer_settings["optimizer"] for optimizer_settings in self.optimizers_settings if optimizer_settings["optimizer"].lower() not in optimizers_mapping)
+        if len(non_supported_optimizers) > 0:
+            raise ValueError(f"The following optimizers are not supported: {non_supported_optimizers}")
+        for optimizer_index, optimizer_settings in enumerate(self.optimizers_settings):
+            print(f"The optimizer settings at optimizer index {optimizer_index} do not contain the key 'parameters_group'."
+                  f"Setting it to the list of all the model parameters.")
+            if "parameters_group" not in optimizer_settings:
+                optimizer_settings["parameters_group"] = [
+                    name
+                    for name, param in self.model.named_parameters()
+                ]
 
         optimizers = []
         for optimizer_settings in self.optimizers_settings:
             optimizer = optimizers_mapping[optimizer_settings["optimizer"].lower()](
-                [param for name, param in self.model.named_parameters() if
-                 name in optimizer_settings["parameters_group"]],
+                params=[param for name, param in self.model.named_parameters() if name in optimizer_settings["parameters_group"]],
                 lr=optimizer_settings["learning_rate"],
                 eps=1e-7 if self.model_dtype == "float16" else 1e-8
             )
 
             if "lr_scheduler" in optimizer_settings:
-                # TODO: Add the possibility to use different learning rate schedulers
-                # TODO: Pass to optimizer and lr_scheduler a dictionary of parameters
+                warmup_steps = optimizer_settings["warmup_steps"] if "warmup_steps" in optimizer_settings else 0
+                if warmup_steps <= 0:
+                    print("Warmup steps set to 0. No warmup will be performed.")
                 new_optimizer = {
                     "optimizer": optimizer,
                     "lr_scheduler": {
                         "scheduler": transformers.get_cosine_schedule_with_warmup(
                             optimizer,
-                            num_warmup_steps=optimizer_settings["warmup_steps"],
+                            num_warmup_steps=warmup_steps,
                             num_training_steps=self.max_steps,
                             num_cycles=0.5
                         ),
@@ -223,7 +245,7 @@ class CausalLMModelWrapper(pl.LightningModule):
                 Model outputs.
         """
 
-        return self.model(input_ids, **kwargs)
+        return self.model.forward(input_ids, **kwargs)
 
     def get_unweighted_penalization(
             self
@@ -385,7 +407,7 @@ class CausalLMModelWrapper(pl.LightningModule):
             prog_bar=True
         )
 
-        self.training_step_losses_sum += loss.detach().cpu().numpy()
+        self.training_step_losses_sum += loss.detach().cpu().to(torch.float32).numpy()
         self.training_step_losses_count += 1
 
         self.training_step_index += 1
@@ -426,7 +448,7 @@ class CausalLMModelWrapper(pl.LightningModule):
             prog_bar=True
         )
 
-        self.validation_step_losses_sum += loss.detach().cpu().numpy()
+        self.validation_step_losses_sum += loss.detach().cpu().to(torch.float32).numpy()
         self.validation_step_losses_count += 1
 
         return loss
@@ -464,7 +486,7 @@ class CausalLMModelWrapper(pl.LightningModule):
             on_epoch=True
         )
 
-        self.test_step_losses_sum += loss.detach().cpu().numpy()
+        self.test_step_losses_sum += loss.detach().cpu().to(torch.float32).numpy()
         self.test_step_losses_count += 1
 
         return loss
@@ -511,8 +533,6 @@ class CausalLMModelWrapper(pl.LightningModule):
         print(f'Validation loss: {avg_val_loss}')
         print("----------------------------------------------------------")
 
-        self.start_conversation_trial()
-
     def on_test_epoch_end(
         self
     ) -> None:
@@ -534,6 +554,126 @@ class CausalLMModelWrapper(pl.LightningModule):
             print("Number of test steps equal to 0")
         print(f'Test loss: {avg_test_loss}')
         print("----------------------------------------------------------")
+
+
+class ChatbotModelWrapper(CausalLMModelWrapper):
+    """
+    Wrapper to train a CausalLMModel with Pytorch Lightning.
+
+    Args:
+        model (transformers.PreTrainedModel):
+            The model to wrap.
+        tokenizer (transformers.AutoTokenizer | transformers.PreTrainedTokenizer):
+            Tokenizer object.
+        optimizers_settings (list[dict]):
+            List of dictionaries containing the optimizers' settings.
+        max_steps (int):
+            Maximum number of steps.
+        stop_tokens (list[str]):
+            List of stop tokens.
+        kfc_training (bool):
+            Whether to use KFC training.
+        initial_regularization_weight (float):
+            Initial regularization weight.
+        maximum_regularization_weight (float):
+            Maximum regularization weight.
+        start_step_regularization (int):
+            Step at which to start regularization.
+        steps_regularization_weight_resets (int):
+            Steps between regularization parameters resets.
+        path_to_storage (str):
+            Path to storage.
+        model_dtype (torch.dtype):
+            Data type.
+
+    Attributes:
+        model (transformers.PreTrainedModel):
+            The model to wrap.
+        tokenizer (transformers.AutoTokenizer | transformers.PreTrainedTokenizer):
+            Tokenizer object.
+        optimizers_settings (list[dict]):
+            List of dictionaries containing the optimizers settings.
+        max_steps (int):
+            Maximum number of steps.
+        stop_tokens (list[str]):
+            List of stop tokens.
+        kfc_training (bool):
+            Whether to use KFC training.
+        initial_regularization_weight (float):
+            Initial regularization weight.
+        fixed_regularization_weight (torch.Tensor):
+            Fixed regularization weight.
+        adaptive_regularization_weight (torch.Tensor):
+            Adaptive regularization weight.
+        maximum_regularization_weight (torch.Tensor):
+            Maximum regularization weight.
+        start_step_regularization (int):
+            Step at which to start regularization.
+        steps_regularization_weight_resets (int):
+            Steps between regularization parameters resets.
+        path_to_storage (str):
+            Path to storage.
+        model_dtype (torch.dtype):
+            Data type.
+        training_step_index (int):
+            Index of the training step.
+        training_step_losses_sum (float):
+            Sum of the training step losses.
+        training_step_losses_count (int):
+            Number of training step losses.
+        validation_step_losses_sum (float):
+            Sum of the validation step losses.
+        validation_step_losses_count (int):
+            Number of validation step losses.
+        test_step_losses_sum (float):
+            Sum of the test step losses.
+        test_step_losses_count (int):
+            Number of test step losses.
+        loss_history (dict[str, list[float]]):
+            History of the losses.
+    """
+
+    def __init__(
+        self,
+        model: transformers.PreTrainedModel,
+        tokenizer: transformers.AutoTokenizer | transformers.PreTrainedTokenizer,
+        optimizers_settings: list[dict] = None,
+        max_steps: int = 1,
+        stop_tokens: list[str] = ("[INST]", "</s>"),
+        kfc_training: bool = False,
+        initial_regularization_weight: float = 0.01,
+        maximum_regularization_weight: float = 10.0,
+        start_step_regularization: int = 0,
+        steps_regularization_weight_resets: int = 1000,
+        path_to_storage: str = None,
+        model_dtype: torch.dtype = torch.float32
+    ) -> None:
+        super().__init__(
+            model,
+            tokenizer,
+            optimizers_settings,
+            max_steps,
+            stop_tokens,
+            kfc_training,
+            initial_regularization_weight,
+            maximum_regularization_weight,
+            start_step_regularization,
+            steps_regularization_weight_resets,
+            path_to_storage,
+            model_dtype
+        )
+    @override
+    def on_validation_epoch_end(
+        self
+    ) -> None:
+        """
+        Computes and stores the average training loss on the samples considered from the previous
+        validation check to the current one and the average loss on the validation set.
+        """
+
+        super().on_validation_epoch_end()
+
+        self.start_conversation_trial()
 
     def start_conversation_trial(
         self
@@ -558,84 +698,4 @@ class CausalLMModelWrapper(pl.LightningModule):
             stop_tokens=self.stop_tokens,
             user_inputs=get_conversation_example_2(),
             make_model_trainable=True
-        )
-
-
-class ChatbotModelWrapper(CausalLMModelWrapper):
-    """
-    Wrapper to train a model that is a chatbot with Pytorch Lightning.
-
-    Args:
-        model (transformers.AutoModelForCausalLM):
-            The model to wrap.
-        tokenizer (transformers.AutoTokenizer | transformers.PreTrainedTokenizer):
-            Tokenizer object.
-        learning_rate (float):
-            Learning rate. Defaults to 1e-5.
-        max_epochs (int):
-            Maximum number of epochs. Defaults to 3.
-        warmup_steps (int):
-            Number of warmup steps. Defaults to 0.
-        kwargs:
-            Additional keyword arguments.
-
-    Attributes:
-        model (transformers.AutoModelForCausalLM):
-            The model to wrap.
-        tokenizer (transformers.AutoTokenizer | transformers.PreTrainedTokenizer):
-            Tokenizer object.
-        learning_rate (float):
-            Learning rate.
-        max_epochs (int):
-            Maximum number of epochs.
-        warmup_steps (int):
-            Number of warmup steps.
-        training_step_index (int):
-            Index of the training step.
-        loss_history (dict[str, list[float]]):
-            History of the losses.
-        training_step_losses_sum (float):
-            Sum of the training step losses.
-        training_step_losses_count (int):
-            Number of training step losses.
-        validation_step_losses_sum (float):
-            Sum of the validation step losses.
-        validation_step_losses_count (int):
-            Number of validation step losses.
-        test_step_losses_sum (float):
-            Sum of the test step losses.
-        test_step_losses_count (int):
-            Number of test step losses.
-    """
-
-    def __init__(
-        self,
-        model: transformers.AutoModelForCausalLM,
-        tokenizer: transformers.AutoTokenizer | transformers.PreTrainedTokenizer,
-        optimizers_settings: list[dict] = None,
-        max_steps: int = 1,
-        stop_tokens: list[str] = ("[INST]", "</s>"),
-        kfc_training: bool = False,
-        initial_regularization_weight: float = 0.01,
-        max_regularization_weight: float = 10.0,
-        start_step_regularization: int = 0,
-        steps_regularization_weight_resets: int = 1000,
-        path_to_storage: str = None,
-        dtype: torch.dtype = torch.float32,
-        **kwargs
-    ) -> None:
-        super().__init__(
-            model,
-            tokenizer,
-            optimizers_settings,
-            max_steps,
-            stop_tokens,
-            kfc_training,
-            initial_regularization_weight,
-            max_regularization_weight,
-            start_step_regularization,
-            steps_regularization_weight_resets,
-            path_to_storage,
-            dtype,
-            **kwargs
         )
