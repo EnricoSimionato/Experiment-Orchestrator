@@ -527,7 +527,7 @@ class GeneralPurposeExperiment(ABC):
         self.running_times = []
 
         # Checking the path to the storage
-        file_available, directory_path, file_name = check_path_to_storage(
+        file_available, experiment_root_path, file_name = check_path_to_storage(
             self.config.get("path_to_storage"),
             self.config.get("experiment_type"),
             self.config.get("model_id").split("/")[-1],
@@ -536,10 +536,10 @@ class GeneralPurposeExperiment(ABC):
         self.config.update(
             {
                 "file_available": file_available,
-                "file_path": os.path.join(directory_path, file_name),
-                "directory_path": directory_path,
+                "file_path": os.path.join(experiment_root_path, file_name),
+                "experiment_root_path": experiment_root_path,
                 "file_name": file_name,
-                "log_path": os.path.join(directory_path, "logs.log")
+                "log_path": os.path.join(experiment_root_path, "logs.log")
             }
         )
 
@@ -555,7 +555,7 @@ class GeneralPurposeExperiment(ABC):
         self.log(f"Configuration file from: '{config_file_path}'.")
 
         # Doing a consistency between the stored configuration and the loaded configuration
-        self.check_stored_configuration_consistency(os.path.join(directory_path, "config.yaml"))
+        self.check_stored_configuration_consistency(os.path.join(experiment_root_path, "config.yaml"))
         self.log(f"Consistency check between the stored configuration and the loaded configuration passed.")
 
         # Loading the data if the file is available
@@ -642,7 +642,7 @@ class GeneralPurposeExperiment(ABC):
     ) -> None:
         """
         Checks if there are any differences between the current configuration and the one stored in config.yaml (if it
-        exists) in the directory_path.
+        exists) in the experiment_root_path.
 
         Args:
             config_file_path (str):
@@ -735,6 +735,23 @@ class GeneralPurposeExperiment(ABC):
 
         return list(set(mandatory_keys))
 
+    def create_experiment_directory(
+            self,
+            directory_name: str,
+            key_in_configuration: str = None
+    ) -> None:
+        """
+        Creates a directory for the experiment.
+
+        Args:
+            directory_name (str):
+                The name of the directory to be created.
+            key_in_configuration (str):
+                The key in the configuration to store the path to the directory.
+        """
+
+        self.config.create_directory(self.config.get("experiment_root_path"), directory_name, key_in_configuration)
+
     def launch_experiment(
             self
     ) -> None:
@@ -816,7 +833,7 @@ class GeneralPurposeExperiment(ABC):
         Stores the configuration of the experiment.
         """
 
-        self.config.store(self.config.get("directory_path"))
+        self.config.store(self.config.get("experiment_root_path"))
 
     def store_data(
             self
@@ -844,7 +861,7 @@ class GeneralPurposeExperiment(ABC):
                 True if the file exists, False otherwise.
         """
 
-        return os.path.exists(os.path.join(self.config.get("directory_path"), file_name)) and os.path.isfile(os.path.join(self.config.get("directory_path"), file_name))
+        return os.path.exists(os.path.join(self.config.get("experiment_root_path"), file_name)) and os.path.isfile(os.path.join(self.config.get("experiment_root_path"), file_name))
 
     def store(
             self,
@@ -869,16 +886,16 @@ class GeneralPurposeExperiment(ABC):
 
         self.log(f"Trying to store data in file '{file_name}' with extension '{extension}'.")
         if extension == "pkl":
-            with open(os.path.join(self.config.get("directory_path"), file_name), "wb") as f:
+            with open(os.path.join(self.config.get("experiment_root_path"), file_name), "wb") as f:
                 pkl.dump(data, f)
         elif extension == "pt":
-            with open(os.path.join(self.config.get("directory_path"), file_name), "wb") as f:
+            with open(os.path.join(self.config.get("experiment_root_path"), file_name), "wb") as f:
                 torch.save(data, f)
         elif extension == "plt":
-            data.savefig(os.path.join(self.config.get("directory_path"), file_name))
+            data.savefig(os.path.join(self.config.get("experiment_root_path"), file_name))
         else:
             raise NotImplementedError(f"Extension {extension} not implemented.")
-        self.log(f"Successfully stored data in file '{os.path.join(self.config.get('directory_path'), file_name)}'.")
+        self.log(f"Successfully stored data in file '{os.path.join(self.config.get('experiment_root_path'), file_name)}'.")
 
     def load(
             self,
@@ -898,16 +915,16 @@ class GeneralPurposeExperiment(ABC):
         self.log(f"Trying to load data from file '{file_name}' with extension '{extension}'.")
         try:
             if extension == "pkl":
-                with open(os.path.join(self.config.get("directory_path"), file_name), "rb") as f:
+                with open(os.path.join(self.config.get("experiment_root_path"), file_name), "rb") as f:
                     data = pkl.load(f)
             elif extension == "pt":
-                with open(os.path.join(self.config.get("directory_path"), file_name), "rb") as f:
+                with open(os.path.join(self.config.get("experiment_root_path"), file_name), "rb") as f:
                     data = torch.load(f)
             else:
                 raise NotImplementedError(f"Extension {extension} not implemented.")
-            self.log(f"Successfully loaded data from file '{os.path.join(self.config.get('directory_path'), file_name)}'.")
+            self.log(f"Successfully loaded data from file '{os.path.join(self.config.get('experiment_root_path'), file_name)}'.")
         except FileNotFoundError:
-            self.log(f"File '{os.path.join(self.config.get('directory_path'), file_name)}' not found.")
+            self.log(f"File '{os.path.join(self.config.get('experiment_root_path'), file_name)}' not found.")
             data = None
 
         return data

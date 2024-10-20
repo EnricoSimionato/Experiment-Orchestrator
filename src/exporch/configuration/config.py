@@ -4,8 +4,6 @@ import yaml
 import os
 from typing import Any
 
-import transformers
-
 from exporch.utils.print_utils.print_utils import Verbose
 
 
@@ -158,10 +156,6 @@ class Config:
         """
         Returns the paths of the experiment.
 
-        Args:
-            kwargs:
-                Additional keyword arguments.
-
         Returns:
             dict:
                 A dictionary containing the paths of the experiment.
@@ -175,41 +169,11 @@ class Config:
 
         return paths
 
-    def get_original_model(
-            self
-    ) -> transformers.PreTrainedModel:
-        """
-        Returns the original model.
-
-        Returns:
-            transformers.PreTrainedModel:
-                The original model.
-        """
-
-        if self.contains("task"):
-            if self.get("task") == "chatbot":
-                original_model = transformers.AutoModelForCausalLM.from_pretrained(self.get("path_to_model"))
-            elif self.get("task") == "classification":
-                original_model = transformers.AutoModelForSequenceClassification.from_pretrained(self.get("path_to_model"))
-            else:
-                original_model = transformers.AutoModel.from_pretrained(self.get("path_to_model"))
-                print("Configuration does not contain a know task, loading the model as a generic model.")
-                print(f"The given task is {self.get('task')}")
-        else:
-            original_model = transformers.AutoModel.from_pretrained(self.get("path_to_model"))
-            print("Configuration does not contain the task, loading the model as a generic model.")
-
-        return original_model
-
     def get_verbose(
             self,
     ) -> Verbose:
         """
         Returns the verbosity level of the configuration.
-
-        Args:
-            kwargs:
-                Additional keyword arguments.
 
         Returns:
             Verbose:
@@ -263,8 +227,6 @@ class Config:
                 The key whose value is to be set.
             value (Any):
                 The value to be set for the specified key.
-            **kwargs:
-                Additional keyword arguments.
         """
 
         self.__dict__[key] = value
@@ -279,44 +241,43 @@ class Config:
         Args:
             config (dict):
                 A dictionary containing the configuration parameters to be updated or inserted.
-            **kwargs:
-                Additional keyword arguments.
         """
 
         self.__dict__.update(config)
 
-    def start_experiment(
-            self
+    def create_directory(
+            self,
+            base_path: str,
+            directory_name: str,
+            key_in_configuration: str = None
     ) -> None:
         """
-        Initializes the experiments by defining the paths to the directories of the experiment and the start timestamp
-        of the experiment.
+        Creates a directory for the experiment.
+
+        Args:
+            base_path (str):
+                The base path for the directory, where the directory will be created.
+            directory_name (str):
+                The name of the directory to be created.
+            key_in_configuration (str):
+                The key in the configuration to store the path to the directory.
         """
 
-        dir_name = "_".join([self.__dict__[key].replace("/", "_") for key in self.keys_for_naming])
-        path_to_experiment = os.path.join(
-            self.get("path_to_storage"),
-            dir_name +
-            ("_" if len(dir_name) > 0 else "")
-        )
-        os.makedirs(path_to_experiment, exist_ok=True)
+        if not os.path.exists(base_path):
+            raise Exception(f"The base path '{base_path}' does not exist.")
 
-        paths = {
-            "path_to_model": os.path.join(path_to_experiment, "model"),
-            "path_to_tokenizer": os.path.join(path_to_experiment, "tokenizer"),
-            "path_to_configuration": os.path.join(path_to_experiment, "configuration"),
-            "path_to_logs": os.path.join(path_to_experiment, "logs"),
-            #"path_to_tensorboard_logs": os.path.join(path_to_experiment, "logs", "tensorboard_logs"),
-            #"path_to_csv_logs": os.path.join(path_to_experiment, "logs", "csv_logs"),
-            "path_to_checkpoints": os.path.join(path_to_experiment, "checkpoints"),
-            "path_to_images": os.path.join(path_to_experiment, "images")
-        }
-        for _, path in paths.items():
-            os.makedirs(path, exist_ok=True)
+        if key_in_configuration is None:
+            key_in_configuration = "path_to_" + directory_name
 
-        paths["path_to_experiment"] = path_to_experiment
+        path_to_directory = os.path.join(base_path, directory_name)
 
-        self.__dict__.update(paths)
+        if not os.path.exists(path_to_directory):
+            os.makedirs(path_to_directory)
+
+        if self.contains(key_in_configuration):
+            raise Exception(f"The key '{key_in_configuration}' already exists in the configuration.")
+
+        self.set(key_in_configuration, path_to_directory)
 
     def store(
             self,

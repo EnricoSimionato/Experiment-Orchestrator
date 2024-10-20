@@ -13,6 +13,7 @@ dependencies = [
     "peft",
     "pyyaml",
     "pytorch-lightning",
+    "tensorboard",
     "torch",
     "torchmetrics",
     "transformers"

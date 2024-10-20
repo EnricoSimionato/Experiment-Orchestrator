@@ -47,19 +47,19 @@ def get_causal_lm_trainer(
     # Defining loggers
     loggers = [
         TensorBoardLogger(
-            save_dir=config.get("path_to_logs"),
+            save_dir=config.get("path_to_training_logs"),
             name="tensorboard_logs"
         ),
         CSVLogger(
-            save_dir=config.get("path_to_logs"),
+            save_dir=config.get("path_to_training_logs"),
             name="csv_logs"
         ),
         #CometLogger(
-        #    save_dir=config.get("path_to_logs"),
+        #    save_dir=config.get("path_to_training_logs"),
         #    name="comet_logs"
         #)
         #pl.loggers.WandbLogger(
-        #    save_dir=config.get("path_to_logs"),
+        #    save_dir=config.get("path_to_training_logs"),
         #    name="wandb_logs"
         #)
     ]
