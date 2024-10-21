@@ -851,8 +851,11 @@ class GeneralPurposeExperiment(ABC):
                 The data computed in the experiment.
         """
 
-        with open(self.config.get("file_path"), "rb") as f:
-            data = pkl.load(f)
+        if not os.path.exists(self.config.get("file_path")):
+            data = None
+        else:
+            with open(self.config.get("file_path"), "rb") as f:
+                data = pkl.load(f)
         if load_in_current_experiment:
             self.data = data
 
@@ -875,6 +878,26 @@ class GeneralPurposeExperiment(ABC):
 
         with open(self.config.get("file_path"), "wb") as f:
             pkl.dump(data, f)
+
+    def store_positional_data(
+            self,
+            data: Any,
+            position: int
+    ) -> None:
+        """
+        Stores the data computed in the experiment.
+        """
+
+        loaded_data = self.load_data()
+        if loaded_data is None:
+            loaded_data = [None] * (position + 1)
+        else:
+            if len(loaded_data) <= position:
+                loaded_data += [None] * (position - len(loaded_data) + 1)
+
+        loaded_data[position] = data
+
+        self.store_data(loaded_data)
 
     def exists_file(
             self,
