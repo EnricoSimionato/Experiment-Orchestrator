@@ -1,7 +1,6 @@
 import pytorch_lightning as pl
 from pytorch_lightning.loggers.csv_logs import CSVLogger
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
-from sympy.integrals.intpoly import gradient_terms
 
 from exporch.configuration.config import Config
 from exporch.utils.device_utils.device_utils import get_available_device
