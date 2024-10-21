@@ -69,7 +69,7 @@ def get_causal_lm_trainer(
     # Defining trainer settings
     lightning_trainer = pl.Trainer(
         max_epochs=max_epochs,
-        val_check_interval=num_ckecks_per_epoch,
+        val_check_interval=float(1/num_ckecks_per_epoch),
         accumulate_grad_batches=gradient_accumulation_steps,
         callbacks=callbacks,
         accelerator=get_available_device(config.get("device"), just_string=True),

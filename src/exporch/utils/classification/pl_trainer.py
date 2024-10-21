@@ -26,6 +26,13 @@ def get_classification_trainer(
             The PyTorch Lightning trainer for the classification problem.
     """
 
+    if not config.contains("max_epochs"):
+        raise ValueError("The configuration must contain the maximum number of epochs ('max_epochs' key).")
+    if not config.contains("path_to_checkpoints"):
+        raise ValueError("The configuration must contain the path to the checkpoints ('path_to_checkpoints' key).")
+    if not config.contains("path_to_training_logs"):
+        raise ValueError("The configuration must contain the path to the training logs ('path_to_training_logs' key).")
+
     # Defining callbacks
     callbacks = [
         # Defining early stopping callback
@@ -66,18 +73,20 @@ def get_classification_trainer(
         #)
     ]
 
+    max_epochs = config.get("max_epochs")
+    num_ckecks_per_epoch = config.get("num_checks_per_epoch") if config.contains("num_checks_per_epoch") else 1
+    gradient_accumulation_steps = config.get("gradient_accumulation_steps") if config.contains("gradient_accumulation_steps") else 1
+
     # Defining trainer settings
     lightning_trainer = pl.Trainer(
-        max_epochs=config.get("max_epochs"),
-        val_check_interval=1/config.get("num_checks_per_epoch"),
-        accumulate_grad_batches=config.get("gradient_accumulation_steps"),
+        max_epochs=max_epochs,
+        val_check_interval=float(1/num_ckecks_per_epoch),
+        accumulate_grad_batches=gradient_accumulation_steps,
         callbacks=callbacks,
-        accelerator=get_available_device(
-            config.get("device"),
-            just_string=True
-        ),
+        accelerator=get_available_device(config.get("device"), just_string=True),
         logger=loggers,
-        log_every_n_steps=1
+        log_every_n_steps=1,
+        #fast_dev_run=True
     )
 
     return lightning_trainer
