@@ -261,7 +261,6 @@ def load_model_for_causal_lm(
 
     bnb_config = None
     if config.contains("quantization") and config.get("quantization") == "4bit":
-        print("Loading the model using 4bit quantization\n") 
         # Defining the quantization configuration (4 bits)
         bnb_config = BitsAndBytesConfig(
             load_in_4bit=True,

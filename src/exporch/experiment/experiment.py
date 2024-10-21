@@ -835,15 +835,46 @@ class GeneralPurposeExperiment(ABC):
 
         self.config.store(self.config.get("experiment_root_path"))
 
+    def load_data(
+            self,
+            load_in_current_experiment: bool = False
+    ) -> tuple:
+        """
+        Loads the data computed in the experiment.
+
+        Args:
+            load_in_current_experiment (bool):
+                Whether to load the data in the current experiment or not.
+
+        Returns:
+            tuple:
+                The data computed in the experiment.
+        """
+
+        with open(self.config.get("file_path"), "rb") as f:
+            data = pkl.load(f)
+        if load_in_current_experiment:
+            self.data = data
+
+        return data
+
     def store_data(
-            self
+            self,
+            data: tuple = None
     ) -> None:
         """
         Stores the data computed in the experiment.
+
+        Args:
+            data (tuple, optional):
+                The data computed in the experiment. Default to None.
         """
 
+        if data is None:
+            data = self.data
+
         with open(self.config.get("file_path"), "wb") as f:
-            pkl.dump(self.data, f)
+            pkl.dump(data, f)
 
     def exists_file(
             self,
