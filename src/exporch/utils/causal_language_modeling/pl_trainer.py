@@ -75,7 +75,7 @@ def get_causal_lm_trainer(
         accelerator=get_available_device(config.get("device"), just_string=True),
         logger=loggers,
         log_every_n_steps=1,
-        fast_dev_run=True
+        #fast_dev_run=True
     )
 
     return lightning_trainer
