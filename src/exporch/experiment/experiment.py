@@ -7,6 +7,7 @@ import yaml
 import logging
 import os
 import pickle as pkl
+from lm_eval.tasks.lingoly.script import parse_str_list_score
 from typing import Any
 
 import torch
@@ -509,7 +510,7 @@ class GeneralPurposeExperiment(ABC):
             The running times of the experiment.
         mandatory_keys (list):
             The mandatory keys in the configuration.
-        data (Any):
+        data (list):
             The data already computed in the experiment.
     """
 
@@ -597,17 +598,68 @@ class GeneralPurposeExperiment(ABC):
 
     def set_data(
             self,
-            data: Any
+            data: Any,
+            position: int = None,
+            store: bool = True
     ) -> None:
         """
-        Sets the data computed in the experiment.
+        Sets and stores the data computed in the experiment.
 
         Args:
             data (Any):
                 The data computed in the experiment.
+            position (int, optional):
+                The position where to store the data. Defaults to None.
+            store (bool, optional):
+                Whether to store the data. Defaults to True.
         """
 
+        if data is None:
+            self.log("The data to store is None. The data will not be stored.")
+            self.data = None
+
+        if not isinstance(data, tuple) and not isinstance(data, list) and position is None:
+            raise ValueError("When the provided data is not a tuple, the position must be provided.")
+
+        if position is not None:
+            if self.data is None:
+                formatted_data = [None] * (position + 1)
+            else:
+                if len(self.data) <= position:
+                    formatted_data = list(self.data) + [None] * (position - len(self.data) + 1)
+                else:
+                    formatted_data = list(self.data)
+
+            formatted_data[position] = data
+        else:
+            formatted_data = data
+
+        self.data = tuple(formatted_data)
+
+        if store:
+            with open(self.config.get("file_path"), "wb") as f:
+                pkl.dump(self.data, f)
+
+    def _load_data(
+            self,
+    ) -> tuple:
+        """
+        Loads the data computed in the experiment.
+
+        Returns:
+            tuple:
+                The data computed in the experiment.
+        """
+
+        if not os.path.exists(self.config.get("file_path")):
+            data = None
+        else:
+            with open(self.config.get("file_path"), "rb") as f:
+                data = pkl.load(f)
+
         self.data = data
+
+        return data
 
     def log(
             self,
@@ -775,7 +827,7 @@ class GeneralPurposeExperiment(ABC):
                     self.log(f"Analysis interrupted by the user.", print_message=True)
                     self.log(f"Interrupting the analysis again it will stop definitely.", print_message=True)
                 self._postprocess_results()
-            self._plot_results(self.config, self.data)
+            self._plot_results(self.config, self.get_data())
         except Exception as e:
             self.running_times[-1]["end_time"] = datetime.now()
             self.status = ExperimentStatus.STOPPED
@@ -834,70 +886,6 @@ class GeneralPurposeExperiment(ABC):
         """
 
         self.config.store(self.config.get("experiment_root_path"))
-
-    def load_data(
-            self,
-            load_in_current_experiment: bool = False
-    ) -> tuple:
-        """
-        Loads the data computed in the experiment.
-
-        Args:
-            load_in_current_experiment (bool):
-                Whether to load the data in the current experiment or not.
-
-        Returns:
-            tuple:
-                The data computed in the experiment.
-        """
-
-        if not os.path.exists(self.config.get("file_path")):
-            data = None
-        else:
-            with open(self.config.get("file_path"), "rb") as f:
-                data = pkl.load(f)
-        if load_in_current_experiment:
-            self.data = data
-
-        return data
-
-    def store_data(
-            self,
-            data: tuple = None
-    ) -> None:
-        """
-        Stores the data computed in the experiment.
-
-        Args:
-            data (tuple, optional):
-                The data computed in the experiment. Default to None.
-        """
-
-        if data is None:
-            data = self.data
-
-        with open(self.config.get("file_path"), "wb") as f:
-            pkl.dump(data, f)
-
-    def store_positional_data(
-            self,
-            data: Any,
-            position: int
-    ) -> None:
-        """
-        Stores the data computed in the experiment.
-        """
-
-        loaded_data = self.load_data()
-        if loaded_data is None:
-            loaded_data = [None] * (position + 1)
-        else:
-            if len(loaded_data) <= position:
-                loaded_data += [None] * (position - len(loaded_data) + 1)
-
-        loaded_data[position] = data
-
-        self.store_data(loaded_data)
 
     def exists_file(
             self,
@@ -989,6 +977,8 @@ class NopGeneralPurposeExperiment(GeneralPurposeExperiment):
     A no-operation experiment that does nothing.
     """
 
+
+
     mandatory_keys = ["nop"]
 
     def _run_experiment(
@@ -996,6 +986,34 @@ class NopGeneralPurposeExperiment(GeneralPurposeExperiment):
     ) -> None:
         """
         Does nothing.
+        """
+
+        pass
+
+    def _postprocess_results(
+            self
+    ) -> None:
+        """
+        Post-processes the results obtained from the experiment.
+        The performed operations will depend on the specific subclass of GeneralPurposeExperiment.
+        """
+
+        pass
+
+    def _plot_results(
+            self,
+            config: Config,
+            data: Any
+    ) -> None:
+        """
+        Plots the results obtained from the experiment.
+        The performed operations will depend on the specific subclass of GeneralPurposeExperiment.
+
+        Args:
+            config (Config):
+                The configuration of the experiment.
+            data (Any):
+                The data obtained from the analysis.
         """
 
         pass

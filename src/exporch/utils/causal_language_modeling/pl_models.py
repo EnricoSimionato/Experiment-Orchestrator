@@ -190,11 +190,12 @@ class CausalLMModelWrapper(pl.LightningModule):
             if "parameters_group" not in optimizer_settings:
                 optimizer_settings["parameters_group"] = [
                     name
-                    for name, param in self.model.named_parameters()
+                    for name, param in self.model.named_parameters() if param.requires_grad
                 ]
 
         optimizers = []
         for optimizer_settings in self.optimizers_settings:
+            print(f"Optimized parameters: {"\n".join([name for name, param in self.model.named_parameters() if name in optimizer_settings["parameters_group"] and param.requires_grad])}")
             optimizer = optimizers_mapping[optimizer_settings["optimizer"].lower()](
                 params=[param for name, param in self.model.named_parameters() if name in optimizer_settings["parameters_group"] and param.requires_grad],
                 lr=optimizer_settings["learning_rate"],
@@ -353,7 +354,7 @@ class CausalLMModelWrapper(pl.LightningModule):
         # Computing the loss of the model for the considered train batch
         outputs = self(input_ids, labels=labels)
         loss = outputs.loss
-
+        """
         if self.kfc_training and self.training_step_index >= self.start_step_regularization:
             self.log(
                 "task_loss",
@@ -390,6 +391,7 @@ class CausalLMModelWrapper(pl.LightningModule):
             loss = loss + self.adaptive_regularization_weight * weighted_penalization
 
             self.regularization_scheduler_step()
+        """
 
         self.log(
             "loss",

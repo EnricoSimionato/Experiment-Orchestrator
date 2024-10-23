@@ -14,7 +14,6 @@ import transformers
 from exporch.utils.classification.pl_metrics import ClassificationStats
 from exporch.utils.general_framework_utils.utility_mappings import optimizers_mapping
 
-
 class ClassifierModelWrapper(pl.LightningModule):
     """
     Wrapper to train a classifier model in Pytorch Lightning.
