@@ -196,6 +196,7 @@ class CausalLMModelWrapper(pl.LightningModule):
         optimizers = []
         for optimizer_settings in self.optimizers_settings:
             print(f"Optimized parameters: {"\n".join([name for name, param in self.model.named_parameters() if name in optimizer_settings["parameters_group"] and param.requires_grad])}")
+            print([param for name, param in self.model.named_parameters() if name in optimizer_settings["parameters_group"] and param.requires_grad])
             optimizer = optimizers_mapping[optimizer_settings["optimizer"].lower()](
                 params=[param for name, param in self.model.named_parameters() if name in optimizer_settings["parameters_group"] and param.requires_grad],
                 lr=optimizer_settings["learning_rate"],
