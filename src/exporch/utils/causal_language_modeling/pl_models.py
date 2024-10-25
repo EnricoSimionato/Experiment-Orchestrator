@@ -419,6 +419,7 @@ class CausalLMModelWrapper(pl.LightningModule):
                 print(name)
                 print()
                 print(param)
+                print(param.grad)
                 break
 
         return loss
