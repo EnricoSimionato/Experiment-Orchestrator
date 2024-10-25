@@ -414,6 +414,13 @@ class CausalLMModelWrapper(pl.LightningModule):
 
         self.training_step_index += 1
 
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                print(name)
+                print()
+                print(param)
+                break
+
         return loss
 
     def validation_step(
