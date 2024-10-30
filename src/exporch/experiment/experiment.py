@@ -946,6 +946,7 @@ class GeneralPurposeExperiment(ABC):
     ) -> Any:
         """
         Loads the data from a file.
+        Returns None if the file is not found.
 
         Args:
             file_name (str):
