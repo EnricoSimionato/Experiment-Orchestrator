@@ -962,7 +962,7 @@ class GeneralPurposeExperiment(ABC):
                     data = pkl.load(f)
             elif extension == "pt":
                 with open(os.path.join(self.config.get("experiment_root_path"), file_name), "rb") as f:
-                    data = torch.load(f)
+                    data = torch.load(f, weights_only=True)
             else:
                 raise NotImplementedError(f"Extension {extension} not implemented.")
             self.log(f"Successfully loaded data from file '{os.path.join(self.config.get('experiment_root_path'), file_name)}'.")
