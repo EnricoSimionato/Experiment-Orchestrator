@@ -956,6 +956,8 @@ class GeneralPurposeExperiment(ABC):
         """
 
         self.log(f"Trying to load data from file '{file_name}' with extension '{extension}'.")
+        self.log(f"Path in experiment: {os.path.join(self.config.get('experiment_root_path'), file_name)}",
+                 print_message=True)
         try:
             if extension == "pkl":
                 with open(os.path.join(self.config.get("experiment_root_path"), file_name), "rb") as f:
