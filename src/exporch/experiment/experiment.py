@@ -969,6 +969,12 @@ class GeneralPurposeExperiment(ABC):
         except FileNotFoundError:
             self.log(f"File '{os.path.join(self.config.get('experiment_root_path'), file_name)}' not found.")
             data = None
+        except RuntimeError as e:
+            self.log(f"RuntimeError while loading model: {e}")
+            data = None
+        except Exception as e:
+            self.log(f"Unexpected error while loading '{file_name}': {e}")
+            data = None
 
         return data
 

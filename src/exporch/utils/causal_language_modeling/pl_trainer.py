@@ -64,6 +64,7 @@ def get_causal_lm_trainer(
     max_epochs = config.get("max_epochs")
     num_ckecks_per_epoch = config.get("num_checks_per_epoch") if config.contains("num_checks_per_epoch") else 1
     gradient_accumulation_steps = config.get("gradient_accumulation_steps") if config.contains("gradient_accumulation_steps") else 1
+    fast_dev_run = config.get("fast_dev_run") if config.contains("fast_dev_run") else False
 
     # Defining trainer settings
     lightning_trainer = pl.Trainer(
@@ -74,7 +75,7 @@ def get_causal_lm_trainer(
         accelerator=get_available_device(config.get("device"), just_string=True),
         logger=loggers,
         log_every_n_steps=1,
-        #fast_dev_run=True
+        fast_dev_run=fast_dev_run
     )
 
     return lightning_trainer
