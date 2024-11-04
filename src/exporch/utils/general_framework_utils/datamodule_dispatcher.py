@@ -3,7 +3,11 @@ import pytorch_lightning as pl
 import transformers
 
 from exporch.configuration.config import Config
-from exporch.utils.causal_language_modeling.pl_datasets import OpenAssistantGuanacoDataModule, Wikitext2DataModule
+from exporch.utils.causal_language_modeling.pl_datasets import (
+    OpenAssistantGuanacoDataModule,
+    Wikitext2DataModule,
+    OpenWebTextStreamingDataModule
+)
 from exporch.utils.classification.pl_datasets import IMDBDataModule
 
 
@@ -80,6 +84,12 @@ def get_pytorch_lightning_dataset(
         )
     elif datamodule_id == "wikitext2":
         datamodule = Wikitext2DataModule(
+            tokenizer,
+            max_len,
+            **config.get_dict(general_parameters)
+        )
+    elif datamodule_id == "openwebtext":
+        datamodule = OpenWebTextStreamingDataModule(
             tokenizer,
             max_len,
             **config.get_dict(general_parameters)

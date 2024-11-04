@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional
+import gc
+from typing import Optional, Iterator
 
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, IterableDataset
 
 import pytorch_lightning as pl
 
@@ -567,7 +568,7 @@ class OpenAssistantGuanacoDataModule(pl.LightningDataModule):
 
 class Wikitext2Dataset(LanguageModelingDataset):
     """
-    Dataset class to use OpenAssistant-Guanaco dataset with Pytorch and Pytorch Lightning.
+    Dataset class to use Wikitext-2 dataset with Pytorch and Pytorch Lightning.
 
     Args:
         raw_dataset (datasets.Dataset):
@@ -711,7 +712,7 @@ class Wikitext2DataModule(pl.LightningDataModule):
 
     def __init__(
             self,
-            tokenizer,
+            tokenizer: transformers.AutoTokenizer | transformers.PreTrainedTokenizer,
             max_len: int,
             split: tuple[float, float, float] = (0.8, 0.1, 0.1),
             batch_size: int = 1,
@@ -862,3 +863,247 @@ class Wikitext2DataModule(pl.LightningDataModule):
             batch_size=self.batch_size * 2,
             num_workers=self.num_workers
         )
+
+
+class OpenWebTextIterableDataset(IterableDataset):
+    """
+    IterableDataset for streaming OpenWebText data with custom splits.
+
+    Args:
+        tokenizer (transformers.AutoTokenizer | transformers.PreTrainedTokenizer):
+            Tokenizer to use to preprocess the data.
+        max_length (int):
+            Maximum length of the input sequences.
+        start (float):
+            Start of the split range.
+        end (float):
+            End of the split range.
+
+    Attributes:
+        dataset (datasets.Dataset):
+            OpenWebText dataset.
+        tokenizer (transformers.AutoTokenizer | transformers.PreTrainedTokenizer):
+            Tokenizer to use to preprocess the data.
+        max_length (int):
+            Maximum length of the input sequences.
+        start (float):
+            Start of the split range.
+        end (float):
+            End of the split range.
+    """
+
+    def __init__(
+            self,
+            tokenizer: transformers.AutoTokenizer | transformers.PreTrainedTokenizer,
+            max_length: int = 512,
+            start: float = 0.,
+            end: float = 1.
+    ) -> None:
+        super().__init__()
+        self.dataset = load_dataset("Skylion007/openwebtext", split="train", streaming=True, trust_remote_code=True)
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+
+        self.start = start
+        self.end = end
+
+    def __len__(
+            self
+    ) -> int:
+        """
+        Returns the number of examples in the dataset.
+
+        Returns:
+            int:
+                Number of examples in the dataset
+        """
+
+        return self.dataset.info.splits["train"].num_examples
+
+    def __iter__(
+            self
+    ) -> Iterator[dict]:
+        """
+        Yields tokenized data samples based on split range.
+        """
+
+        for idx, item in enumerate(self.dataset):
+            if not (self.start <= (idx % 1) < self.end):
+                continue  # Skip items outside the split range
+
+            # Tokenize and pad the text to the maximum length
+            tokenized = self.tokenizer(
+                item["text"],
+                padding="max_length",
+                max_length=self.max_length,
+                truncation=True,
+                return_tensors="pt",
+                return_attention_mask=True,
+                add_special_tokens=True
+            )
+            yield {
+                "input_ids": tokenized["input_ids"].squeeze(0),
+                "labels": tokenized["input_ids"].squeeze(0),
+                "attention_mask": tokenized["attention_mask"].squeeze(0)
+            }
+
+
+class OpenWebTextStreamingDataModule(pl.LightningDataModule):
+    """
+    DataModule for OpenWebText dataset for language modeling tasks.
+
+    Args:
+        tokenizer (transformers.PreTrainedTokenizer):
+            Tokenizer to use to preprocess the data.
+        max_len (int):
+            Maximum length of the input sequences.
+        split (tuple[float, float, float]):
+            Split of the dataset into training, validation, and test sets. Defaults to (0.8, 0.1, 0.1).
+        batch_size (int):
+            Size of the batch. Defaults to 1.
+        num_workers (int):
+            Number of workers to use for loading the data. Defaults to 1.
+        seed (int):
+            Seed for the random number generator.
+
+    Attributes:
+        tokenizer (transformers.PreTrainedTokenizer):
+            Tokenizer to use to preprocess the data.
+        max_len (int):
+            Maximum length of the input sequences.
+        split (tuple[float, float, float]):
+            Split of the dataset into training, validation, and test sets.
+        batch_size (int):
+            Size of the batch.
+        num_workers (int):
+            Number of workers to use for loading the data.
+        seed (int):
+            Seed for the random number generator.
+        train (OpenAssistantGuanacoDataset):
+            Training dataset.
+        validation (OpenAssistantGuanacoDataset):
+            Validation dataset.
+        test (OpenAssistantGuanacoDataset):
+            Test dataset.
+    """
+
+    def __init__(
+            self,
+            tokenizer: transformers.AutoTokenizer | transformers.PreTrainedTokenizer,
+            max_len: int,
+            split: tuple[float, float, float] = (0.8, 0.1, 0.1),
+            batch_size: int = 1,
+            num_workers: int = 1,
+            seed: int = 42,
+    ) -> None:
+        super().__init__()
+
+        super().__init__()
+        if len(split) != 3:
+            raise ValueError(
+                "The split must have three elements (train, validation, test)."
+            )
+        if sum(split) != 1:
+            raise ValueError(
+                "The sum of the split elements must be equal to 1."
+            )
+
+        self.tokenizer = tokenizer
+        self.max_len = max_len
+        self.split = split
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.seed = seed
+
+        self.train = None
+        self.validation = None
+        self.test = None
+
+    def prepare_data(
+            self,
+            **kwargs
+    ):
+        """
+        Downloads the data.
+        Runs on a single GPU.
+
+        Args:
+            kwargs:
+                Additional keyword arguments.
+        """
+
+        load_dataset("Skylion007/openwebtext", split='train', streaming=True, trust_remote_code=True)
+
+    def setup(
+            self,
+            stage: Optional[str] = None,
+            **kwargs
+    ) -> None:
+        """
+        Preprocesses data.
+        Can run on multiple GPUs.
+        OpenWebText is used for training, while Wikitext2 is used for validation and test.
+
+        Args:
+            stage (Optional[str]):
+                Stage of the experiment.
+            kwargs:
+                Additional keyword arguments.
+        """
+
+        self.train = OpenWebTextIterableDataset(self.tokenizer, self.max_len, 0., self.split[0])
+
+        # Validation and test are done on Wikitext2 dataset
+        wikitext2_datamodule = Wikitext2DataModule(self.tokenizer, self.max_len, self.split, self.batch_size, self.num_workers, self.seed)
+        wikitext2_datamodule.setup()
+        self.validation = wikitext2_datamodule.validation
+        self.test = wikitext2_datamodule.test
+        del wikitext2_datamodule.train
+        gc.collect()
+
+        #self.validation = OpenWebTextIterableDataset(self.tokenizer, self.max_len, self.split[0], self.split[1])
+        #self.test = OpenWebTextIterableDataset(self.tokenizer, self.max_len,self.split[1], 1.)
+
+    def train_dataloader(
+            self
+    ) -> DataLoader:
+        """
+        Returns the train DataLoader.
+
+        Returns:
+            DataLoader:
+                Train DataLoader.
+        """
+
+        if self.train is None:
+            self.setup()
+
+        return DataLoader(self.train, batch_size=self.batch_size, num_workers=self.num_workers)
+
+    def val_dataloader(self):
+        """
+        Returns the validation DataLoader.
+
+        Returns:
+            DataLoader:
+                Validation DataLoader.
+        """
+
+        if self.validation is None:
+            self.setup()
+
+        return DataLoader(self.validation, batch_size=self.batch_size, num_workers=self.num_workers)
+
+    def test_dataloader(self):
+        """
+        Returns the test DataLoader.
+
+        Returns:
+            DataLoader:
+                Test DataLoader.
+        """
+
+        if self.test is None:
+            self.setup()
+
+        return DataLoader(self.test, batch_size=self.batch_size, num_workers=self.num_workers)
