@@ -920,31 +920,44 @@ class OpenWebTextIterableDataset(IterableDataset):
 
         return self.dataset.info.splits["train"].num_examples
 
-    def __iter__(
-            self
-    ) -> Iterator[dict]:
+    def __iter__(self) -> Iterator[dict[str, torch.Tensor]]:
         """
-        Yields tokenized data samples based on split range.
+        Yields tokenized data samples based on split range, concatenating to form full-length sequences.
         """
-
+        token_buffer = []
         for idx, item in enumerate(self.dataset):
+            # Skip items outside the split range
             if not (self.start <= (idx % 1) < self.end):
-                continue  # Skip items outside the split range
+                continue
 
-            # Tokenize and pad the text to the maximum length
-            tokenized = self.tokenizer(
+            # Tokenize the text and add special tokens
+            tokens = self.tokenizer(
                 item["text"],
-                padding="max_length",
-                max_length=self.max_length,
-                truncation=True,
-                return_tensors="pt",
-                return_attention_mask=True,
                 add_special_tokens=True
-            )
+            )["input_ids"]
+
+            # Extend the buffer with new tokens
+            token_buffer.extend(tokens)
+
+            # If the buffer exceeds max_length, yield a full-length sample
+            while len(token_buffer) >= self.max_length:
+                yield_token_ids = token_buffer[:self.max_length]
+                token_buffer = token_buffer[self.max_length:]
+
+                yield {
+                    "input_ids": torch.tensor(yield_token_ids, dtype=torch.long),
+                    "labels": torch.tensor(yield_token_ids, dtype=torch.long),
+                    "attention_mask": torch.ones(self.max_length, dtype=torch.long)
+                }
+
+        # Yield remaining tokens in the buffer with padding if needed
+        if token_buffer:
+            yield_token_ids = token_buffer + [self.tokenizer.pad_token_id] * (self.max_length - len(token_buffer))
             yield {
-                "input_ids": tokenized["input_ids"].squeeze(0),
-                "labels": tokenized["input_ids"].squeeze(0),
-                "attention_mask": tokenized["attention_mask"].squeeze(0)
+                "input_ids": torch.tensor(yield_token_ids, dtype=torch.long),
+                "labels": torch.tensor(yield_token_ids, dtype=torch.long),
+                "attention_mask": torch.ones(len(token_buffer), dtype=torch.long).pad(
+                    (0, self.max_length - len(token_buffer)), value=0)
             }
 
 
@@ -1107,3 +1120,31 @@ class OpenWebTextStreamingDataModule(pl.LightningDataModule):
             self.setup()
 
         return DataLoader(self.test, batch_size=self.batch_size, num_workers=self.num_workers)
+
+
+from transformers import AutoTokenizer
+from itertools import islice
+
+# Define parameters
+max_length = 512  # Maximum sequence length
+sample_count = 5  # Number of samples to print for testing
+
+# Initialize tokenizer and dataset
+tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+dataset = OpenWebTextIterableDataset(tokenizer=tokenizer, max_length=max_length, start=0.0, end=0.01)
+
+# Print a few samples to test
+for i, sample in enumerate(islice(dataset, sample_count)):
+    print(f"Sample {i + 1}:")
+    print("Input IDs:", sample["input_ids"])
+    print("Labels:", sample["labels"])
+    print("Attention Mask:", sample["attention_mask"])
+    print("Length of Input IDs:", len(sample["input_ids"]))
+    print("\n" + "-" * 80 + "\n")
+
+    # Verify the length of the generated sequences
+    assert len(sample["input_ids"]) == max_length, "Sample length does not match max_length!"
+    assert len(sample["labels"]) == max_length, "Labels length does not match max_length!"
+    assert len(sample["attention_mask"]) == max_length, "Attention mask length does not match max_length!"
+
+print("All samples are correctly generated with the specified max_length.")
