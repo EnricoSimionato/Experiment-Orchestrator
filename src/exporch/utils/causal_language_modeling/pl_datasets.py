@@ -1120,31 +1120,3 @@ class OpenWebTextStreamingDataModule(pl.LightningDataModule):
             self.setup()
 
         return DataLoader(self.test, batch_size=self.batch_size, num_workers=self.num_workers)
-
-
-from transformers import AutoTokenizer
-from itertools import islice
-
-# Define parameters
-max_length = 512  # Maximum sequence length
-sample_count = 5  # Number of samples to print for testing
-
-# Initialize tokenizer and dataset
-tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
-dataset = OpenWebTextIterableDataset(tokenizer=tokenizer, max_length=max_length, start=0.0, end=0.01)
-
-# Print a few samples to test
-for i, sample in enumerate(islice(dataset, sample_count)):
-    print(f"Sample {i + 1}:")
-    print("Input IDs:", sample["input_ids"])
-    print("Labels:", sample["labels"])
-    print("Attention Mask:", sample["attention_mask"])
-    print("Length of Input IDs:", len(sample["input_ids"]))
-    print("\n" + "-" * 80 + "\n")
-
-    # Verify the length of the generated sequences
-    assert len(sample["input_ids"]) == max_length, "Sample length does not match max_length!"
-    assert len(sample["labels"]) == max_length, "Labels length does not match max_length!"
-    assert len(sample["attention_mask"]) == max_length, "Attention mask length does not match max_length!"
-
-print("All samples are correctly generated with the specified max_length.")

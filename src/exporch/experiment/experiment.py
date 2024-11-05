@@ -308,13 +308,31 @@ class GeneralPurposeExperiment(ABC):
                 self.log("Configuration differences found:")
                 for key, (current_value, stored_value) in differences.items():
                     diff_message = f"- {key}: Current: {current_value}, Stored: {stored_value}"
-                    print(diff_message)
-                    self.log(diff_message + "\n")
+                    self.log(diff_message + "\n", print_message=True)
                 user_confirmation = input("There are differences in the configuration. Do you want to continue with the new configuration? (yes/no): ").strip().lower()
                 if user_confirmation != "yes" and user_confirmation != "y":
                     print("Experiment aborted due to configuration inconsistency.")
                     self.status = ExperimentStatus.STOPPED
                     raise Exception("Experiment aborted due to configuration inconsistency.")
+                else:
+                    # Adding the previous values to the configuration with the key as key_previous_0, key_previous_1, ...
+                    for key in differences:
+                        counter = 0
+                        new_key = f"_{key}_previous_{counter}"
+
+                        # Incrementing counter if a previous key exists in the stored configuration
+                        previous_elements = {}
+                        while new_key in stored_config:
+                            previous_elements[new_key] = stored_config[new_key]
+                            counter += 1
+                            new_key = f"_{key}_previous_{counter}"
+
+                        previous_elements[new_key] = stored_config[key]
+
+                        # Adding the previous values to the configuration
+                        self.config.update(previous_elements)
+                    # Storing the new configuration
+                    self.store_configuration()
             else:
                 self.log("No differences found between the current configuration and the stored configuration.")
         else:
@@ -340,25 +358,22 @@ class GeneralPurposeExperiment(ABC):
                 (current_value, stored_value).
         """
 
-        not_evaluated_keys = ["version", "file_available", "just_plot", "device"]
-        for key in not_evaluated_keys:
-            if key in current_config:
-                del current_config[key]
-            if key in stored_config:
-                del stored_config[key]
+        non_evaluated_keys = ["version", "file_available", "just_plot", "device"]
 
         differences = {}
         for key in current_config:
-            if key in stored_config:
-                if current_config[key] != stored_config[key]:
-                    differences[key] = (current_config[key], stored_config[key])
-            else:
-                differences[key] = (current_config[key], None)
+            if key not in non_evaluated_keys and not key.startswith("_"):
+                if key in stored_config:
+                    if current_config[key] != stored_config[key]:
+                        differences[key] = (current_config[key], stored_config[key])
+                else:
+                    differences[key] = (current_config[key], None)
 
         # Finding any keys in the stored config that are not in the current config
         for key in stored_config:
-            if key not in current_config:
-                differences[key] = (None, stored_config[key])
+            if key not in non_evaluated_keys and not key.startswith("_"):
+                if key not in current_config:
+                    differences[key] = (None, stored_config[key])
 
         return differences
 
@@ -416,15 +431,18 @@ class GeneralPurposeExperiment(ABC):
                                  "Set 'just_plot' to False.")
             if not self.config.contains("just_plot") or not self.config.get("just_plot"):
                 self.log(f"Starting the experiment.")
-                try:
-                    self._run_experiment()
-                except KeyboardInterrupt as e:
-                    self.log(f"Analysis interrupted by the user.", print_message=True)
-                    self.log(f"Interrupting the analysis again it will stop definitely.", print_message=True)
+                self._run_experiment()
                 self._postprocess_results()
             self._plot_results(self.config, self.get_data())
+        except (KeyboardInterrupt, SystemExit) as e:
+            self.log(f"Analysis interrupted by the user.", print_message=True)
+            self.running_times[-1]["end_time"] = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+            self.status = ExperimentStatus.STOPPED
+            self.store_configuration()
+            raise e
         except Exception as e:
-            self.running_times[-1]["end_time"] = datetime.now()
+            self.log(f"Unexpected error: {e}", print_message=True)
+            self.running_times[-1]["end_time"] = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
             self.status = ExperimentStatus.STOPPED
             self.store_configuration()
             raise e
