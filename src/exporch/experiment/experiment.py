@@ -327,7 +327,7 @@ class GeneralPurposeExperiment(ABC):
                             counter += 1
                             new_key = f"_{key}_previous_{counter}"
 
-                        previous_elements[new_key] = stored_config[key]
+                        previous_elements[new_key] = stored_config[key] if key in stored_config else None
 
                         # Adding the previous values to the configuration
                         self.config.update(previous_elements)
