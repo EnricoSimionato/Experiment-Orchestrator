@@ -907,19 +907,6 @@ class OpenWebTextIterableDataset(IterableDataset):
         self.start = start
         self.end = end
 
-    def __len__(
-            self
-    ) -> int:
-        """
-        Returns the number of examples in the dataset.
-
-        Returns:
-            int:
-                Number of examples in the dataset
-        """
-
-        return self.dataset.info.splits["train"].num_examples
-
     def __iter__(self) -> Iterator[dict[str, torch.Tensor]]:
         """
         Yields tokenized data samples based on split range, concatenating to form full-length sequences.
@@ -1105,7 +1092,7 @@ class OpenWebTextStreamingDataModule(pl.LightningDataModule):
         if self.validation is None:
             self.setup()
 
-        return DataLoader(self.validation, batch_size=self.batch_size, num_workers=self.num_workers)
+        return DataLoader(self.validation, batch_size=self.batch_size, num_workers=self.num_workers, persistent_workers = True)
 
     def test_dataloader(self):
         """
@@ -1119,4 +1106,4 @@ class OpenWebTextStreamingDataModule(pl.LightningDataModule):
         if self.test is None:
             self.setup()
 
-        return DataLoader(self.test, batch_size=self.batch_size, num_workers=self.num_workers)
+        return DataLoader(self.test, batch_size=self.batch_size, num_workers=self.num_workers, persistent_workers = True)
