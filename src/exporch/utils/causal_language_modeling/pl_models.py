@@ -356,12 +356,6 @@ class CausalLMModelWrapper(pl.LightningModule):
         # Computing the loss of the model for the considered train batch
         outputs = self(input_ids, labels=labels)
         loss = outputs.loss
-        for name, param in self.named_parameters():
-            if param.requires_grad:
-                print(name)
-                print(param.data[0,0])
-                print(param)
-                break
 
         """
         if self.kfc_training and self.training_step_index >= self.start_step_regularization:
