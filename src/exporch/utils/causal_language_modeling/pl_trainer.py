@@ -62,14 +62,20 @@ def get_causal_lm_trainer(
     ]
 
     max_epochs = config.get("max_epochs")
-    num_ckecks_per_epoch = config.get("num_checks_per_epoch") if config.contains("num_checks_per_epoch") else 1
+    num_ckecks_per_epoch = config.get("num_checks_per_epoch") if config.contains("num_checks_per_epoch") else None
+    val_check_interval = config.get("val_check_interval") if config.contains("val_check_interval") else None
+    if val_check_interval is None:
+        if num_ckecks_per_epoch is None:
+            val_check_interval = 1.0
+        else:
+            val_check_interval = float(1/num_ckecks_per_epoch)
     gradient_accumulation_steps = config.get("gradient_accumulation_steps") if config.contains("gradient_accumulation_steps") else 1
     fast_dev_run = config.get("fast_dev_run") if config.contains("fast_dev_run") else False
 
     # Defining trainer settings
     lightning_trainer = pl.Trainer(
         max_epochs=max_epochs,
-        val_check_interval=float(1/num_ckecks_per_epoch),
+        val_check_interval=val_check_interval,
         accumulate_grad_batches=gradient_accumulation_steps,
         callbacks=callbacks,
         accelerator=get_available_device(config.get("device"), just_string=True),
