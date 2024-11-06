@@ -207,17 +207,19 @@ class CausalLMModelWrapper(pl.LightningModule):
                 if warmup_steps <= 0:
                     print("Warmup steps set to 0. No warmup will be performed.")
                 new_optimizer = {
-                    "optimizer": optimizer,
-                    "lr_scheduler": {
-                        "scheduler": transformers.get_cosine_schedule_with_warmup(
-                            optimizer,
-                            num_warmup_steps=warmup_steps,
-                            num_training_steps=self.max_steps,
-                            num_cycles=0.5
-                        ),
-                        "monitor": optimizer_settings["monitored_metric"]
-                    }
+                    "optimizer": optimizer
                 }
+                """
+                "lr_scheduler": {
+                    "scheduler": transformers.get_cosine_schedule_with_warmup(
+                        optimizer,
+                        num_warmup_steps=warmup_steps,
+                        num_training_steps=self.max_steps,
+                        num_cycles=0.5
+                    ),
+                    "monitor": optimizer_settings["monitored_metric"]
+                }
+                """
             else:
                 new_optimizer = {
                     "optimizer": optimizer
@@ -354,6 +356,13 @@ class CausalLMModelWrapper(pl.LightningModule):
         # Computing the loss of the model for the considered train batch
         outputs = self(input_ids, labels=labels)
         loss = outputs.loss
+        for name, param in self.named_parameters():
+            if param.requires_grad:
+                print(name)
+                print(param.data[0,0])
+                print(param)
+                break
+
         """
         if self.kfc_training and self.training_step_index >= self.start_step_regularization:
             self.log(
