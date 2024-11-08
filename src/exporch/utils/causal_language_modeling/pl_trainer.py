@@ -30,13 +30,6 @@ def get_causal_lm_trainer(
 
     # Defining callbacks
     callbacks = [
-        # Defining early stopping callback
-        pl.callbacks.EarlyStopping(
-            monitor="validation_loss",
-            min_delta=0.001,
-            patience=3,
-            verbose=True
-        ),
         # Defining checkpointing callback
         pl.callbacks.ModelCheckpoint(
             dirpath=config.get("path_to_checkpoints"),
@@ -44,10 +37,14 @@ def get_causal_lm_trainer(
             monitor="validation_loss"
         ),
         # Defining learning rate monitor callback
-        pl.callbacks.LearningRateMonitor(
-            logging_interval="step"
-        )
+        pl.callbacks.LearningRateMonitor(logging_interval="step")
     ]
+
+    if not config.contains("early_stopping") or (config.contains("early_stopping") and config.get("early_stopping")):
+        # Defining early stopping callback
+        early_stopping_callback = pl.callbacks.EarlyStopping(
+            monitor="validation_loss", min_delta=0.001, patience=3, verbose=True)
+        callbacks += [early_stopping_callback]
 
     # Defining loggers
     loggers = [
