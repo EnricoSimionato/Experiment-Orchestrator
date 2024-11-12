@@ -44,7 +44,7 @@ def get_causal_lm_trainer(
         # Defining early stopping callback
         early_stopping_callback = pl.callbacks.EarlyStopping(
             monitor="validation_loss", min_delta=0.001, patience=5, verbose=True)
-        callbacks += [early_stopping_callback]
+        #callbacks += [early_stopping_callback]
 
     # Defining loggers
     loggers = [
