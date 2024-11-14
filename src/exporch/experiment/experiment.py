@@ -591,6 +591,23 @@ class GeneralPurposeExperiment(ABC):
 
         return data
 
+    def delete(
+            self,
+            file_name: str
+    ) -> None:
+        """
+        Deletes the file.
+
+        Args:
+            file_name (str):
+                The name of the file to delete.
+        """
+
+        if self.exists_file(file_name):
+            os.remove(os.path.join(self.config.get("experiment_root_path"), file_name))
+            self.log(f"File '{file_name}' successfully deleted.")
+        else:
+            self.log(f"File '{file_name}' not found. It was not deleted.")
 
 class NopGeneralPurposeExperiment(GeneralPurposeExperiment):
     """
