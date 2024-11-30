@@ -614,8 +614,6 @@ class NopGeneralPurposeExperiment(GeneralPurposeExperiment):
     A no-operation experiment that does nothing.
     """
 
-
-
     mandatory_keys = ["nop"]
 
     def _run_experiment(
