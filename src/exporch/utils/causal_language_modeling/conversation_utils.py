@@ -286,7 +286,8 @@ def load_model_for_causal_lm(
     model = AutoModelForCausalLM.from_pretrained(
         config.get("model_id"),
         torch_dtype=torch_dtype,
-        quantization_config=bnb_config
+        quantization_config=bnb_config,
+        device_map=config.get("device") if config.contains("device") else "auto"
     )
 
     if bnb_config is None:
