@@ -162,6 +162,7 @@ def plot_heatmap(
         value_matrices_lists: list[list[np.ndarray | torch.Tensor]],
         save_path: str,
         title: str,
+        axes_displacement: str = "row",
         axis_titles: list[str] = None,
         x_title: str | list[str] = "Column Index",
         y_title: str | list[str] = "Row Index",
@@ -180,7 +181,9 @@ def plot_heatmap(
         y_title_size: int = 16,
         fontsize: int = 20,
         tick_label_size: int = 12,
-        edge_color: str = None
+        edge_color: str = None,
+        vmin: list[float] = None,
+        vmax: list[float] = None
 ) -> None:
     """
     Plot a heatmap with a colorbar for each axis.
@@ -243,7 +246,13 @@ def plot_heatmap(
         raise ValueError("All matrices in the same list (to be plotted together) must have the same shape.")
 
     num_axis = len(value_matrices_lists)
-    fig, axs = plt.subplots(1, num_axis, figsize=fig_size)
+    if axes_displacement == "row":
+        fig, axs = plt.subplots(1, num_axis, figsize=fig_size)
+    elif axes_displacement == "column":
+        fig, axs = plt.subplots(num_axis, 1, figsize=fig_size)
+    else:
+        raise ValueError("The axes displacement must be either 'row' or 'column'.")
+
     fig.suptitle(title, fontsize=20)
 
     for axis_index in range(num_axis):
@@ -257,11 +266,25 @@ def plot_heatmap(
         value_matrices_list = value_matrices_lists[axis_index]
         num_rows, num_cols = value_matrices_list[0].shape
 
+        # Getting the minimum and maximum values for the colormap
+        if vmin is None:
+            vmin_val = np.nanmin(value_matrices_list[0])
+        else:
+            if len(vmin) <= axis_index:
+                raise ValueError("The length of vmin must be equal to the number of axes.")
+            vmin_val = vmin[axis_index] if vmin[axis_index] is not None else np.nanmin(value_matrices_list[0])
+        if vmax is None:
+            vmax_val = np.nanmax(value_matrices_list[0])
+        else:
+            if len(vmax) <= axis_index:
+                raise ValueError("The length of vmax must be equal to the number of axes.")
+            vmax_val = vmax[axis_index] if vmax[axis_index] is not None else np.nanmax(value_matrices_list[0])
+
         # Setting the cells to be squared
         ax.set_aspect("equal")
 
         # Creating the grid for the heatmap
-        cax = ax.pcolormesh(value_matrices_list[0], cmap=cmap_str, edgecolors=edge_color, linewidth=0.5)
+        cax = ax.pcolormesh(value_matrices_list[0], cmap=cmap_str, edgecolors=edge_color, linewidth=0.5, vmin=vmin_val, vmax=vmax_val)
 
         cbar = fig.colorbar(cax, ax=ax, fraction=colorbar_fraction, pad=colorbar_pad)
         cbar.ax.tick_params(labelsize=tick_label_size)

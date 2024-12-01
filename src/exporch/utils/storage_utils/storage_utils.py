@@ -67,7 +67,7 @@ def check_path_to_storage(
     # Defining the version of the experiment if not set
     if version is None:
         # Getting the names of the directories inside the path
-        directories_names = os.listdir(directory_path)
+        directories_names = [dir for dir in os.listdir(directory_path) if os.path.isdir(os.path.join(directory_path, dir))]
 
         # Checking if the directories are versions of the experiment
         versions = [

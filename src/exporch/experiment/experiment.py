@@ -152,6 +152,19 @@ class GeneralPurposeExperiment(ABC):
             self.log("Running in normal mode. The data will persist in main memory.")
         self.data = data
 
+    def get_experiment_path(
+            self
+    ) -> str:
+        """
+        Returns the path to the experiment.
+
+        Returns:
+            str:
+                The path to the experiment.
+        """
+
+        return self.config.get("experiment_root_path")
+
     def get_config(
             self
     ) -> Config:
