@@ -106,7 +106,8 @@ class Config:
 
     def get(
             self,
-            key: str
+            key: str,
+            default: Any = None
     ) -> Any:
         """
         Returns the value of the specified key.
@@ -114,14 +115,17 @@ class Config:
         Args:
             key (str):
                 The key whose value is to be returned.
-            **kwargs:
-                Additional keyword arguments.
+            default (Any):
+                The default value to be returned if the key is not present.
 
         Returns:
             Any:
                 The value of the specified key.
         """
 
+        if default is not None:
+            if not self.contains(key):
+                return default
         return self.__dict__[key]
 
     def get_dict(

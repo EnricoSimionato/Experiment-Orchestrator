@@ -178,6 +178,20 @@ class GeneralPurposeExperiment(ABC):
 
         return self.config
 
+    def set_config(
+            self,
+            config: Config
+    ) -> None:
+        """
+        Updates the configuration.
+
+        Args:
+            config (Config):
+                The configuration to update.
+        """
+
+        self.config = config
+
     def get_data(
             self
     ) -> Any:
