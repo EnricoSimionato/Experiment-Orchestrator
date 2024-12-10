@@ -10,6 +10,7 @@ import pytorch_lightning as pl
 
 import transformers
 
+from exporch.utils import LoggingInterface
 from exporch.utils.causal_language_modeling.conversation_utils import (
     get_conversation_example_1,
     get_conversation_example_2,
@@ -232,6 +233,9 @@ class CausalLMModelWrapper(pl.LightningModule):
                 Loss of the model computed for the current batch.
         """
 
+        if hasattr(self.model, "before_training_step") and callable(getattr(self.model, "before_training_step", None)):
+            self.model.before_training_step(self.training_step_index)
+
         input_ids = batch["input_ids"]
         labels = batch["labels"]
 
@@ -254,6 +258,11 @@ class CausalLMModelWrapper(pl.LightningModule):
             on_epoch=True,
             prog_bar=True
         )
+
+        if issubclass(type(self.model), LoggingInterface):
+            logs_dicts = self.model.get_logging_info()
+            for log_element in logs_dicts:
+                self.log(**log_element)
 
         self.training_step_losses_sum += loss.detach().cpu().to(torch.float32).numpy()
         self.training_step_losses_count += 1
@@ -404,6 +413,7 @@ class CausalLMModelWrapper(pl.LightningModule):
         print("----------------------------------------------------------")
 
 
+# TODO TOFIX
 class RegularizedCausalLMModelWrapper(CausalLMModelWrapper):
     """
     Wrapper to train a CausalLMModel with Pytorch Lightning.
@@ -419,8 +429,6 @@ class RegularizedCausalLMModelWrapper(CausalLMModelWrapper):
             Maximum number of steps.
         stop_tokens (list[str]):
             List of stop tokens.
-        kfc_training (bool):
-            Whether to use KFC training.
         initial_regularization_weight (float):
             Initial regularization weight.
         maximum_regularization_weight (float):
@@ -445,8 +453,6 @@ class RegularizedCausalLMModelWrapper(CausalLMModelWrapper):
             Maximum number of steps.
         stop_tokens (list[str]):
             List of stop tokens.
-        kfc_training (bool):
-            Whether to use KFC training.
         initial_regularization_weight (float):
             Initial regularization weight.
         fixed_regularization_weight (torch.Tensor):
@@ -493,9 +499,8 @@ class RegularizedCausalLMModelWrapper(CausalLMModelWrapper):
         optimizers_settings: list[dict] = None,
         max_steps: int = 1,
         stop_tokens: list[str] = ("</s>",),
-        kfc_training: bool = False,
-        initial_regularization_weight: float | torch.Tensor = 0.01,
-        maximum_regularization_weight: float | torch.Tensor = 10.0,
+        initial_regularization_weight: float = 0.01,
+        maximum_regularization_weight: float = 10.0,
         start_step_regularization: int = 0,
         steps_regularization_weight_resets: int = 1000,
         path_to_storage: str = None,
@@ -511,15 +516,13 @@ class RegularizedCausalLMModelWrapper(CausalLMModelWrapper):
             model_dtype
         )
 
-        self.kfc_training = kfc_training
-        self.initial_regularization_weight = initial_regularization_weight
+        self.initial_regularization_weight = float(initial_regularization_weight)
         self.fixed_regularization_weight = None
-        self.adaptive_regularization_weight = torch.tensor(initial_regularization_weight, requires_grad=False)
-        self.maximum_regularization_weight = torch.tensor(maximum_regularization_weight, requires_grad=False)
+        self.adaptive_regularization_weight = initial_regularization_weight
+        self.maximum_regularization_weight = float(maximum_regularization_weight)
         self.start_step_regularization = start_step_regularization
         self.steps_regularization_weight_resets = steps_regularization_weight_resets
 
-    #   TOFIX
     def configure_optimizers(
             self,
     ) -> list[dict[str, torch.optim.Optimizer | str | Any]]:
@@ -903,9 +906,6 @@ class RegularizedChatbotModelWrapper(ChatbotModelWrapper, RegularizedCausalLMMod
         max_steps (int):
             Maximum number of steps.
         stop_tokens (list[str]):
-            List of stop tokens.
-        kfc_training (bool):
-            Whether to use KFC training.
         initial_regularization_weight (float):
             Initial regularization weight.
         fixed_regularization_weight (torch.Tensor):
@@ -947,7 +947,6 @@ class RegularizedChatbotModelWrapper(ChatbotModelWrapper, RegularizedCausalLMMod
             optimizers_settings: list[dict] = None,
             max_steps: int = 1,
             stop_tokens: list[str] = ("[INST]", "</s>"),
-            kfc_training: bool = False,
             initial_regularization_weight: float = 0.01,
             maximum_regularization_weight: float = 10.0,
             start_step_regularization: int = 0,
@@ -961,7 +960,6 @@ class RegularizedChatbotModelWrapper(ChatbotModelWrapper, RegularizedCausalLMMod
             optimizers_settings,
             max_steps,
             stop_tokens,
-            kfc_training,
             initial_regularization_weight,
             maximum_regularization_weight,
             start_step_regularization,
