@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Any
 
 import torch
 
@@ -10,8 +9,7 @@ from exporch.utils import LoggingInterface
 
 class ModelWrapper(torch.nn.Module, LoggingInterface, ABC):
     """
-    Abstract class to wrap a model.
-    Subclasses must implement the get_model method that returns the wrapped model.
+    Abstract class of a model wrapper.
     """
 
     def __init__(
@@ -25,7 +23,7 @@ class ModelWrapper(torch.nn.Module, LoggingInterface, ABC):
             self,
             *args,
             **kwargs
-    ) -> Any:
+    ) -> torch.Tensor:
         """
         Forward pass of the model.
 
@@ -38,13 +36,13 @@ class ModelWrapper(torch.nn.Module, LoggingInterface, ABC):
 
     def get_model(
             self
-    ) -> None | torch.nn.Module | transformers.AutoModel | transformers.PreTrainedModel:
+    ) -> torch.nn.Module | transformers.AutoModel | transformers.PreTrainedModel:
         """
-        Returns the wrapped model.
+        Returns the base model.
 
         Returns:
             torch.nn.Module | transformers.AutoModel | transformers.PreTrainedModel:
-                The wrapped model.
+                The base model.
         """
 
         return self.model
@@ -64,12 +62,15 @@ class ModelWrapper(torch.nn.Module, LoggingInterface, ABC):
         return []
 
     @property
-    def device(self):
+    def device(
+            self
+    ) -> torch.device:
         """
-        Returns the device where the model is stored.
+        Returns the device where the model is loaded.
 
         Returns:
-            torch.device: The device where the model is stored.
+            torch.device:
+                The device where the model is loaded.
         """
 
         return next(self.parameters()).device
