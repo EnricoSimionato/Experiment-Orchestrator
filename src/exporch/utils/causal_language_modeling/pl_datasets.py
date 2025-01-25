@@ -594,7 +594,7 @@ class Wikitext2Dataset(LanguageModelingDataset):
             max_length: int = 512,
     ):
         super().__init__(
-            "wikitext-2-raw-v1",
+            "wikitext-2-v1",
             tokenizer
         )
 
