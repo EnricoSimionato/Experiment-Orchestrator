@@ -574,7 +574,7 @@ class GeneralPurposeExperiment(ABC):
             with open(os.path.join(self.config.get("experiment_root_path"), file_name), "wb") as f:
                 torch.save(data, f)
         elif extension == "plt":
-            data.savefig(os.path.join(self.config.get("experiment_root_path"), file_name))
+            data.savefig(os.path.join(self.config.get("experiment_root_path"), file_name), format="pdf")
         else:
             raise NotImplementedError(f"Extension {extension} not implemented.")
         self.log(f"Successfully stored data in file '{os.path.join(self.config.get('experiment_root_path'), file_name)}'.")
