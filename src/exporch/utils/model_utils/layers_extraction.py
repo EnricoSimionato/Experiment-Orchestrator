@@ -35,15 +35,14 @@ def get_parameters(
         layer_path = copy.deepcopy(path) + [f"{layer_name}"] if path is not None else [f"{layer_name}"]
 
         if len(child._modules) == 0 and not isinstance(child, torch.nn.ModuleDict):
-            target_paths_in_current_path = [
-                is_subsequence(
+            target_paths_in_current_path = [target_path
+                for target_path in target_paths if is_subsequence(
                     [sub_path for sub_path in target_path if sub_path != "block_index"],
                     layer_path
-                ) and not any(blacklisted_string in layer_path for blacklisted_string in blacklist)
-                for target_path in target_paths]
-            if sum(target_paths_in_current_path) > 1:
-                raise Exception(f"The layer {layer_path} corresponds to multiple targets.")
-            if any(target_paths_in_current_path):
+                ) and not any(blacklisted_string in layer_path for blacklisted_string in blacklist)]
+            if len(target_paths_in_current_path) > 1:
+                print(f"WARNING: The layer {layer_path} corresponds to multiple targets.\n\t- {'\n\t- '.join([str(el) for el in target_paths_in_current_path])}")
+            if len(target_paths_in_current_path) == 1:
                 # Storing the layer in the dictionary of extracted layers
                 if tuple(layer_path) in layers_storage.keys():
                     raise Exception(f"Layer {layer_path} already stored.")
