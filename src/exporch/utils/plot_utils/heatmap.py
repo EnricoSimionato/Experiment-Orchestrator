@@ -161,21 +161,22 @@ def set_axis_labels(
 def plot_heatmap(
         value_matrices_lists: list[list[np.ndarray | torch.Tensor]],
         save_path: str,
-        title: str,
+        index_colormesh: int = 0,
+        title: str = None,
         axes_displacement: str = "row",
         axis_titles: list[str] = None,
         x_title: str | list[str] = "Column Index",
         y_title: str | list[str] = "Row Index",
         x_labels: list[list[str]] = None,
         y_labels: list[list[str]] = None,
+        x_rotation: float = 90,
+        y_rotation: float = 0,
         x_title_pad: int = 30,
         y_title_pad: int = 30,
         cmap_str: str = "Blues",
         fig_size: tuple = (20, 20),
         precision: int = 3,
         show_text: bool = True,
-        colorbar_fraction: float = 0.03,
-        colorbar_pad: float = 0.04,
         axis_title_size: int = 18,
         x_title_size: int = 16,
         y_title_size: int = 16,
@@ -183,7 +184,8 @@ def plot_heatmap(
         tick_label_size: int = 12,
         edge_color: str = None,
         vmin: list[float] = None,
-        vmax: list[float] = None
+        vmax: list[float] = None,
+        use_custom_font: bool = True
 ) -> None:
     """
     Plot a heatmap with a colorbar for each axis.
@@ -217,10 +219,6 @@ def plot_heatmap(
             The number of decimal places to display in cell values. Default: 2.
         show_text (bool):
             Whether to show text annotations in the cells. Default: True.
-        colorbar_fraction (float):
-            The fraction of the original axes to use for the colorbar. Default: 0.03.
-        colorbar_pad (float):
-            The padding between the plot and colorbar. Default: 0.04.
         axis_title_size (int):
             Font size for axis titles. Default: 16.
         x_title_size (int):
@@ -234,6 +232,11 @@ def plot_heatmap(
         edge_color (str):
             The color of the edges of the cells. Default: "black".
     """
+
+    if use_custom_font:
+        plt.rcParams['mathtext.fontset'] = 'custom'
+        plt.rcParams['mathtext.it'] = 'STIXGeneral:italic'
+        plt.rcParams['mathtext.bf'] = 'STIXGeneral:italic:bold'
 
     if len(value_matrices_lists) <= 0:
         raise ValueError("At least one matrix must be provided.")
@@ -253,7 +256,8 @@ def plot_heatmap(
     else:
         raise ValueError("The axes displacement must be either 'row' or 'column'.")
 
-    fig.suptitle(title, fontsize=20)
+    if title is not None:
+        fig.suptitle(title, fontsize=20)
 
     for axis_index in range(num_axis):
         if num_axis == 1:
@@ -284,9 +288,14 @@ def plot_heatmap(
         ax.set_aspect("equal")
 
         # Creating the grid for the heatmap
-        cax = ax.pcolormesh(value_matrices_list[0], cmap=cmap_str, edgecolors=edge_color, linewidth=0.5, vmin=vmin_val, vmax=vmax_val)
+        cmesh = ax.pcolormesh(value_matrices_list[index_colormesh], cmap=cmap_str, edgecolors=edge_color, linewidth=0.5, vmin=vmin_val, vmax=vmax_val)
 
-        cbar = fig.colorbar(cax, ax=ax, fraction=colorbar_fraction, pad=colorbar_pad)
+        # Creating a divider for the existing axis
+        divider = make_axes_locatable(ax)
+        # Appending a colorbar axis that is as tall as the original heatmap
+        cax = divider.append_axes("right", size="2%", pad=0.3)
+        cbar = fig.colorbar(cmesh, cax=cax)
+
         cbar.ax.tick_params(labelsize=tick_label_size)
 
         # Adding labels
@@ -300,8 +309,8 @@ def plot_heatmap(
             y_ticks=list(np.arange(num_rows) + 0.5),
             x_ticks_visible=False,
             y_ticks_visible=False,
-            x_rotation=90,
-            y_rotation=0,
+            x_rotation=x_rotation,
+            y_rotation=y_rotation,
             x_title_pad=x_title_pad,
             y_title_pad=y_title_pad,
             x_title_size=x_title_size,
@@ -315,11 +324,25 @@ def plot_heatmap(
             for i in range(num_rows):
                 for j in range(num_cols):
                     cell_string = "\n".join(
-                        [f"{value_matrix[i, j]:.{precision}f}" for value_matrix in value_matrices_list])
-                    ax.text(j + 0.5, i + 0.5, f"{cell_string}", ha="center", va="center", fontsize=fontsize,
-                            color=get_text_color(float(value_matrices_list[0][i, j]), plt.get_cmap(cmap_str), vmin=np.nanmin(value_matrices_list[0]), vmax=np.nanmax(value_matrices_list[0])))
-
-    plt.tight_layout(rect=(0, 0, 1, 0.98))
+                        [f"{value_matrix[i, j]:.{precision}f}" if np.isnan(value_matrix[i, j]) or int(value_matrix[i, j]) != value_matrix[i, j] else f"{int(value_matrix[i, j])}"
+                         for value_matrix in value_matrices_list]
+                    )
+                    ax.text(
+                        j + 0.5, i + 0.5,
+                        f"{cell_string}",
+                        ha="center",
+                        va="center",
+                        fontsize=fontsize,
+                        color=get_text_color(
+                            float(value_matrices_list[index_colormesh][i, j]),
+                            plt.get_cmap(cmap_str),
+                            vmin=vmin_val,
+                            vmax=vmax_val
+                            #vmin=np.nanmin(value_matrices_list[index_colormesh]),
+                            #vmax=np.nanmax(value_matrices_list[index_colormesh])
+                        )
+                    )
+    plt.tight_layout()
 
     plt.savefig(save_path)
     logging.info(f"Heatmap saved at '{save_path}'")
