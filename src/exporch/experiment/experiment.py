@@ -331,14 +331,13 @@ class GeneralPurposeExperiment(ABC):
             differences = self.compare_configs(self.config.to_dict(), stored_config)
 
             if differences:
-                print("Configuration differences found:")
-                self.log("Configuration differences found:")
+                self.log("Configuration differences found:", print_message=True)
                 for key, (current_value, stored_value) in differences.items():
                     diff_message = f"- {key}: Current: {current_value}, Stored: {stored_value}"
                     self.log(diff_message + "\n", print_message=True)
                 user_confirmation = input("There are differences in the configuration. Do you want to continue with the new configuration? (yes/no): ").strip().lower()
                 if user_confirmation != "yes" and user_confirmation != "y":
-                    print("Experiment aborted due to configuration inconsistency.")
+                    self.log("Experiment aborted due to configuration inconsistency.", print_message=True)
                     self.status = ExperimentStatus.STOPPED
                     raise Exception("Experiment aborted due to configuration inconsistency.")
                 else:
