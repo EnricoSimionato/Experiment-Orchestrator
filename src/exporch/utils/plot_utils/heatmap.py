@@ -185,7 +185,11 @@ def plot_heatmap(
         edge_color: str = None,
         vmin: list[float] = None,
         vmax: list[float] = None,
-        use_custom_font: bool = True
+        use_custom_font: bool = True,
+        colorbar_top_label: str = None,
+        colorbar_bottom_label: str = None,
+        colorbar_title: str = None,
+        colorbar_high_as_heatmap=True
 ) -> None:
     """
     Plot a heatmap with a colorbar for each axis.
@@ -291,10 +295,27 @@ def plot_heatmap(
         cmesh = ax.pcolormesh(value_matrices_list[index_colormesh], cmap=cmap_str, edgecolors=edge_color, linewidth=0.5, vmin=vmin_val, vmax=vmax_val)
 
         # Creating a divider for the existing axis
-        divider = make_axes_locatable(ax)
-        # Appending a colorbar axis that is as tall as the original heatmap
-        cax = divider.append_axes("right", size="2%", pad=0.3)
-        cbar = fig.colorbar(cmesh, cax=cax)
+        # Colorbar: two modes
+        if colorbar_high_as_heatmap:
+            # Append a colorbar axis that is the same height as the heatmap
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="2%", pad=0.5, axes_class=plt.Axes)
+            cbar = fig.colorbar(cmesh, cax=cax)
+        else:
+            # Use the standard Matplotlib colorbar (often taller than just the axes region)
+            cbar = fig.colorbar(cmesh, ax=ax, fraction=0.046,
+                                pad=0.01, aspect=7, shrink=0.85)
+
+        if colorbar_title:
+            cbar.ax.set_ylabel(colorbar_title, fontsize=x_title_size, rotation=270, labelpad=x_title_pad)
+
+        if colorbar_top_label:
+            cbar.ax.text(0.5, 1.01, colorbar_top_label, fontsize=x_title_size-2, ha='center', va='bottom',
+                         transform=cbar.ax.transAxes)
+
+        if colorbar_bottom_label:
+            cbar.ax.text(0.5, -0.02, colorbar_bottom_label, fontsize=x_title_size-2, ha='center', va='top',
+                         transform=cbar.ax.transAxes)
 
         cbar.ax.tick_params(labelsize=tick_label_size)
 
