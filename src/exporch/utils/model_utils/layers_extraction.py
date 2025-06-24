@@ -41,7 +41,8 @@ def get_parameters(
                     layer_path
                 ) and not any(blacklisted_string in layer_path for blacklisted_string in blacklist)]
             if len(target_paths_in_current_path) > 1:
-                print(f"WARNING: The layer {layer_path} corresponds to multiple targets.\n\t- {'\n\t- '.join([str(el) for el in target_paths_in_current_path])}")
+                joined_targets = "\n\t- ".join(str(el) for el in target_paths_in_current_path)
+                print(f"WARNING: The layer {layer_path} corresponds to multiple targets.\n\t- {joined_targets}")
             if len(target_paths_in_current_path) == 1:
                 # Storing the layer in the dictionary of extracted layers
                 if tuple(layer_path) in layers_storage.keys():
