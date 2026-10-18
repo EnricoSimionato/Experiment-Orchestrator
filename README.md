@@ -66,8 +66,8 @@ src/
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/your_username/experiment-orchestrator.git
-   cd experiment-orchestrator
+   git clone https://github.com/EnricoSimionato/Experiment-Orchestrator.git
+   cd Experiment-Orchestrator
    ```
 
 2. Install the required dependencies:
@@ -102,3 +102,7 @@ Several utility modules are available in the `utils/` directory:
 - **print_utils**: Functions to print data in a formatted manner for debugging and analysis.
 - **storage_utils**: Save and load experiment data easily using these utility functions.
 
+
+## License
+
+Released under the [Apache License 2.0](LICENSE).
